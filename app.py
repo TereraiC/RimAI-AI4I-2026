@@ -321,7 +321,7 @@ def farm_manager_page():
                      else session.get('username', 'Farmer').capitalize())
 
     if not preds:
-        return render_template('farmer_dashboard.html', has_analysis=False, display_name=display_name,
+        return render_template('farm_manager.html', has_analysis=False, display_name=display_name,
                                farm_data={})
 
     current = json.loads(preds[0]['result'])
@@ -354,7 +354,7 @@ def farm_manager_page():
     farm_data.update(current.get('inputs_used', {}))
     farm_data['yield_t_ha'] = yield_pred
 
-    return render_template('farmer_dashboard.html', has_analysis=True, display_name=display_name,
+    return render_template('farm_manager.html', has_analysis=True, display_name=display_name,
                            farm_data=farm_data, score=score, brief=brief, memory_note=memory_note,
                            calendar=calendar, benchmark_yield=benchmark_yield,
                            yield_vs_benchmark_pct=yield_vs_benchmark_pct, recoverable_t_ha=recoverable_t_ha,
@@ -371,7 +371,7 @@ def dashboard():
         province_list = [r['province'] for r in provinces]
         yh = db.execute('SELECT province, year, yield_t_ha, rainfall_mm FROM yield_history ORDER BY year').fetchall()
     yh_data = [{k: r[k] for k in ['province', 'year', 'yield_t_ha', 'rainfall_mm']} for r in yh]
-    return render_template('dashboard.html', total_farmers=total_farmers, total_preds=total_preds,
+    return render_template('farmer_dashboard.html', total_farmers=total_farmers, total_preds=total_preds,
                            provinces=province_list, yh_data=json.dumps(yh_data))
 
 
