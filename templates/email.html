@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %} | Email Reports{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Module 6</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Email Farm Reports</h2>
+<p class="text-muted mb-4">Get risk alerts, pest warnings, and a weekly farm report sent straight to your inbox.</p>
+
+{% if not email_configured %}
+<div class="alert alert-warning mb-4">
+  <strong>⚙️ Demo mode:</strong> Email sending is not configured — reports are logged and previewed but not actually sent.
+  To send real emails, add <code>EMAIL_SMTP_HOST</code>, <code>EMAIL_SMTP_USER</code> and <code>EMAIL_SMTP_PASSWORD</code> to Cell 2 of the notebook.
+  A free option: <a href="https://www.brevo.com" target="_blank">Brevo</a> gives 300 emails/day free forever — use <code>smtp-relay.brevo.com</code>.
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header-harvest">📧 Connect Your Email</div>
+      <div class="card-body p-4">
+        {% if not subscription %}
+        <form method="POST" action="/email/subscribe">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Your Email Address</label>
+            <input name="email" type="email" class="form-control" placeholder="you@example.com" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Report Preferences</label>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="alert_risk" value="1" checked id="er"><label class="form-check-label" for="er">🔴 Risk escalation alerts</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="alert_pest" value="1" checked id="ep"><label class="form-check-label" for="ep">🐛 Pest & disease warnings</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="alert_weekly" value="1" checked id="ew"><label class="form-check-label" for="ew">📊 Weekly farm report</label></div>
+          </div>
+          <button class="btn btn-harvest w-100" type="submit">Subscribe to Reports</button>
+        </form>
+        {% else %}
+        <div class="alert alert-success">
+          ✅ <strong>Connected:</strong> {{ subscription.email }}<br>
+          <small>Subscribed since {{ subscription.created_at[:10] }}</small>
+        </div>
+        <div class="mb-3">
+          <strong>Active reports:</strong><br>
+          {% if subscription.alert_risk %}<span class="badge" style="background:var(--green);">🔴 Risk</span> {% endif %}
+          {% if subscription.alert_pest %}<span class="badge" style="background:var(--green);">🐛 Pest</span> {% endif %}
+          {% if subscription.alert_weekly %}<span class="badge" style="background:var(--green);">📊 Weekly</span> {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          <form method="POST" action="/email/send-now" class="flex-grow-1">
+            <button class="btn btn-harvest w-100" type="submit">📤 Send Report Now</button>
+          </form>
+          <form method="POST" action="/email/unsubscribe">
+            <button class="btn btn-outline-danger" type="submit">Unsubscribe</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header-harvest">👁️ Report Preview</div>
+      <div class="card-body p-3">
+        <div style="background:#e9f5e1; border-radius:12px 12px 12px 0; padding:12px 14px; font-size:0.85rem; white-space:pre-wrap; font-family:monospace; max-height:320px; overflow-y:auto;">{{ preview or "Run the Crop Advisor first to generate a report preview." }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header-harvest">📋 Report Log</div>
+      <div class="card-body p-0">
+        {% if log %}
+        <table class="table table-hover mb-0" style="font-size:0.88rem;">
+          <thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Preview</th></tr></thead>
+          <tbody>
+            {% for entry in log %}
+            <tr>
+              <td style="white-space:nowrap;">{{ entry.created_at[:16].replace('T',' ') }}</td>
+              <td><span class="badge" style="background:var(--green);">{{ entry.msg_type }}</span></td>
+              <td>
+                {% if entry.status == 'sent' %}
+                <span class="badge bg-success">✅ Sent</span>
+                {% elif entry.status == 'simulated' %}
+                <span class="badge bg-secondary">🔵 Demo</span>
+                {% else %}
+                <span class="badge bg-danger">❌ Failed</span>
+                {% endif %}
+              </td>
+              <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                {{ entry.message[:60] }}...
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted p-5">
+          <div style="font-size:2rem;">📭</div>
+          <p class="mt-2">No reports sent yet. Subscribe and click "Send Report Now" to test.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-header-harvest">ℹ️ How Proactive Alerts Work</div>
+      <div class="card-body p-4" style="font-size:0.9rem;">
+        <p>RimAI checks your farm's conditions in the background every few minutes (in production, every few hours) and pushes a message to your Farm Assistant chat, WhatsApp, and email whenever something material changes — without you needing to reopen the app.</p>
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Trigger</th><th>Where it goes</th></tr></thead>
+          <tbody>
+            <tr><td>Risk level escalates (e.g. Low → Moderate)</td><td>Chat + WhatsApp + Email</td></tr>
+            <tr><td>A new pest/disease alert appears for your area</td><td>Chat + WhatsApp + Email</td></tr>
+            <tr><td>Your planting window opens</td><td>Chat + WhatsApp</td></tr>
+            <tr><td>Weekly summary</td><td>WhatsApp + Email (on demand for now)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

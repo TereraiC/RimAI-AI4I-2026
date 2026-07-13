@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %} | AGRITEX Command Centre{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">AGRITEX Officer Dashboard</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">AI Extension Command Centre</h2>
+<p class="text-muted mb-4">{{ farmer_count }} farmers under monitoring across {{ ward_table|length }} wards.</p>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header-harvest">🗺️ Ward Risk Overview</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" style="font-size:0.87rem;">
+          <thead><tr><th>District</th><th>Province</th><th>Farmers</th><th>Risk mix</th><th>Pest alerts</th></tr></thead>
+          <tbody>
+            {% for w in ward_table %}
+            <tr>
+              <td><strong>{{ w.district }}</strong></td>
+              <td>{{ w.province }}</td>
+              <td>{{ w.farmers }}</td>
+              <td>
+                {% if w.high %}<span class="badge bg-danger">{{ w.high }} High</span>{% endif %}
+                {% if w.moderate %}<span class="badge bg-warning text-dark">{{ w.moderate }} Mod</span>{% endif %}
+                {% if w.low %}<span class="badge bg-success">{{ w.low }} Low</span>{% endif %}
+              </td>
+              <td>{{ w.pest_alerts }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header-harvest">🤖 Ask the Data</div>
+      <div class="card-body">
+        <form method="POST" action="/agritex">
+          <input type="hidden" name="action" value="ask">
+          <div class="input-group mb-2">
+            <input name="question" class="form-control" placeholder="e.g. What is causing maize stress in {{ ward_table[0].district if ward_table else 'Chinhoyi' }}?" value="{{ last_question or '' }}">
+            <button class="btn btn-harvest" type="submit">Ask</button>
+          </div>
+        </form>
+        {% if answer %}
+        <div class="p-3 mt-2" style="background:var(--mist); border-radius:10px; font-size:0.9rem;">{{ answer }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header-harvest">🚩 Farmer Priority Queue</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" style="font-size:0.87rem;">
+          <thead><tr><th>#</th><th>Farmer</th><th>Ward</th><th>Risk</th><th>Pest</th><th>Yield</th></tr></thead>
+          <tbody>
+            {% for f in priority_queue %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ f.name }}</td>
+              <td>{{ f.district }}</td>
+              <td>
+                {% if f.risk_label == 'High' %}<span class="badge bg-danger">High</span>
+                {% elif f.risk_label == 'Moderate' %}<span class="badge bg-warning text-dark">Moderate</span>
+                {% else %}<span class="badge bg-success">Low</span>{% endif %}
+              </td>
+              <td>{{ f.pest_alerts|length }}</td>
+              <td>{{ f.yield_t_ha }} t/ha</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header-harvest">📦 Intervention Tracking — Compound D</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" style="font-size:0.85rem;">
+          <thead><tr><th>District</th><th>Allocated</th><th>Farms reached</th></tr></thead>
+          <tbody>
+            {% for a in allocations %}
+            <tr>
+              <td>{{ a.district }}</td>
+              <td>{{ a.bags_allocated }} bags</td>
+              <td>{{ a.farms_reached }} / {{ a.farmers_in_district }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header-harvest">📋 Log a Field Visit</div>
+      <div class="card-body">
+        <form method="POST" action="/agritex">
+          <input type="hidden" name="action" value="visit">
+          <div class="mb-2">
+            <label class="form-label small">Farmer</label>
+            <select name="farmer_id" class="form-select form-select-sm" required>
+              {% for f in priority_queue %}
+              <option value="{{ f.user_id }}">{{ f.name }} — {{ f.district }} ({{ f.risk_label }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Observation</label>
+            <textarea name="observation" class="form-control form-control-sm" rows="2" required></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Recommendation</label>
+            <textarea name="recommendation" class="form-control form-control-sm" rows="2" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Follow-up date</label>
+            <input type="date" name="follow_up_date" class="form-control form-control-sm" required>
+          </div>
+          <button class="btn btn-harvest btn-sm w-100" type="submit">Save Visit Report</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header-harvest">🧾 Recent Field Visit Reports</div>
+      <div class="card-body p-0">
+        {% if visits %}
+        <table class="table table-hover mb-0" style="font-size:0.85rem;">
+          <thead><tr><th>Farmer</th><th>Observation</th><th>Recommendation</th><th>Follow-up</th></tr></thead>
+          <tbody>
+            {% for v in visits %}
+            <tr>
+              <td>{{ v.farmer_name }}</td>
+              <td>{{ v.observation }}</td>
+              <td>{{ v.recommendation }}</td>
+              <td>{{ v.follow_up_date }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted p-4">No field visits logged yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

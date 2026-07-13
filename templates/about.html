@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %} | About{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <p class="section-eyebrow mt-3 mb-2">About This Platform</p>
+    <h2 style="font-family:'DM Serif Display',serif; color:var(--green); font-size:2.5rem;">RimAI</h2>
+    <p class="lead">A prototype national agricultural intelligence platform for Zimbabwe, built for the AI4I Challenge 2026. "Rima" means "to plant/cultivate" in Shona.</p>
+    <hr>
+    <h5 style="color:var(--green);">Vision</h5>
+    <p>To become Zimbabwe's centralised source of AI-powered agricultural intelligence — helping every farmer and officer make better planting decisions, predict yields accurately, manage pest risk, and avoid the crop-rotation mistakes that quietly erode soil fertility year after year.</p>
+    <h5 style="color:var(--green);">What the MVP Does</h5>
+    <ul>
+      <li><strong>Crop Advisor:</strong> Farmer enters location, soil type, and rotation history. RimAI fetches live satellite weather (NASA POWER) automatically and returns fertilizer, timing, and irrigation guidance.</li>
+      <li><strong>Yield Prediction:</strong> Random Forest regression model predicting maize yield (t/ha), now factoring rotation history into the forecast.</li>
+      <li><strong>Dashboard:</strong> Province-level historical yield and rainfall visualisation with risk classification.</li>
+      <li><strong>Farm Assistant:</strong> A Claude-powered chatbot that already knows the farmer's latest analysis. Farmers can type questions or upload photos of pest/disease symptoms for identification.</li>
+    </ul>
+    <h5 style="color:var(--green);">Technology Stack</h5>
+    <table class="table table-bordered" style="font-size:0.9rem;">
+      <tr><td>Frontend</td><td>HTML, Bootstrap 5, JavaScript, Plotly</td></tr>
+      <tr><td>Backend</td><td>Python Flask</td></tr>
+      <tr><td>AI / ML</td><td>Scikit-learn (Random Forest), Claude (vision + chat)</td></tr>
+      <tr><td>Weather Data</td><td>NASA POWER API (free, satellite-derived, near real-time)</td></tr>
+      <tr><td>Database</td><td>SQLite (MVP) → PostgreSQL (scale)</td></tr>
+      <tr><td>Auth</td><td>Flask sessions + Werkzeug password hashing</td></tr>
+    </table>
+    <h5 style="color:var(--green);">Roadmap</h5>
+    <p>Custom-trained image classifier for pest/disease identification (replacing general-purpose vision with a model trained on Zimbabwe-specific crop photos), SMS alerts via EcoNet/NetOne, offline-capable PWA, multi-language support (Shona/Ndebele), and migration to PostgreSQL + cloud deployment.</p>
+    <a href="/" class="btn btn-harvest mt-2">← Back to Home</a>
+  </div>
+</div>
+{% endblock %}

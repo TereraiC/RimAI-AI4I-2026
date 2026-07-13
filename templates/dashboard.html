@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %} | Dashboard{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Module 3</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">National Dashboard</h2>
+<p class="text-muted mb-4">Zimbabwe maize production intelligence — provincial yields, rainfall trends, and platform activity.</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="stat-box"><div class="number">{{ total_farmers }}</div><div class="label">Registered Farmers</div></div></div>
+  <div class="col-6 col-md-3"><div class="stat-box"><div class="number">{{ total_preds }}</div><div class="label">AI Analyses Run</div></div></div>
+  <div class="col-6 col-md-3"><div class="stat-box"><div class="number">{{ provinces|length }}</div><div class="label">Provinces Tracked</div></div></div>
+  <div class="col-6 col-md-3"><div class="stat-box"><div class="number">1.8</div><div class="label">Avg Yield t/ha</div></div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header-harvest">Provincial Yield History (t/ha)</div>
+      <div class="card-body"><div id="yield_chart" style="height:320px;"></div></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header-harvest">Rainfall vs Yield Correlation</div>
+      <div class="card-body"><div id="rain_chart" style="height:320px;"></div></div>
+    </div>
+  </div>
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header-harvest">Province Risk Overview (2023 Season)</div>
+      <div class="card-body">
+        <table class="table table-hover">
+          <thead><tr><th>Province</th><th>Avg Yield (t/ha)</th><th>Risk Level</th><th>Zone</th></tr></thead>
+          <tbody id="risk_table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const raw = {{ yh_data | safe }};
+const byProvince = {};
+raw.forEach(r => {
+  if (!byProvince[r.province]) byProvince[r.province] = {years:[], yields:[], rain:[]};
+  byProvince[r.province].years.push(r.year);
+  byProvince[r.province].yields.push(r.yield_t_ha);
+  byProvince[r.province].rain.push(r.rainfall_mm);
+});
+
+const yTraces = Object.entries(byProvince).map(([prov, d]) => ({
+  x: d.years, y: d.yields, name: prov, type: 'scatter', mode: 'lines+markers',
+  line: {width: 2}, marker: {size: 6}
+}));
+Plotly.newPlot('yield_chart', yTraces, {
+  margin: {t:10,b:40,l:40,r:10}, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+  font: {family: 'Space Grotesk'}, legend: {font:{size:10}},
+  xaxis: {title: 'Year'}, yaxis: {title: 't/ha'}
+}, {responsive: true});
+
+const scatterTraces = Object.entries(byProvince).map(([prov, d]) => ({
+  x: d.rain, y: d.yields, name: prov, mode: 'markers',
+  marker: {size: 10, opacity: 0.8}
+}));
+Plotly.newPlot('rain_chart', scatterTraces, {
+  margin: {t:10,b:40,l:40,r:10}, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+  font: {family: 'Space Grotesk'}, legend: {font:{size:10}},
+  xaxis: {title: 'Rainfall (mm)'}, yaxis: {title: 'Yield (t/ha)'}
+}, {responsive: true});
+
+const data2023 = raw.filter(r => r.year === 2023);
+const tbody = document.getElementById('risk_table');
+const riskMeta = {
+  'Manicaland': {'zone':'I', 'risk':'Low'},
+  'Mashonaland West': {'zone':'II', 'risk':'Low'},
+  'Mashonaland Central': {'zone':'II', 'risk':'Low'},
+  'Masvingo': {'zone':'III', 'risk':'Moderate'},
+  'Matabeleland North': {'zone':'IV', 'risk':'High'},
+};
+data2023.forEach(r => {
+  const meta = riskMeta[r.province] || {zone:'III', risk:'Moderate'};
+  const riskColor = {Low:'success', Moderate:'warning', High:'danger'}[meta.risk] || 'secondary';
+  tbody.innerHTML += `<tr>
+    <td>${r.province}</td>
+    <td>${r.yield_t_ha}</td>
+    <td><span class="badge bg-${riskColor}">${meta.risk}</span></td>
+    <td>${meta.zone}</td>
+  </tr>`;
+});
+</script>
+{% endblock %}

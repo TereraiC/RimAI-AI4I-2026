@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %} | Admin — Trust Centre{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Admin Dashboard</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">AI Transparency &amp; Trust Centre</h2>
+<p class="text-muted mb-4">Model performance, data pipeline health, and system status.</p>
+
+{% if is_synthetic %}
+<div class="alert alert-warning">
+  ⚠️ <strong>Illustrative demo values shown below.</strong> Real backtest artifacts weren't found in <code>data/processed/</code> (run Cell 4's data pipeline with FAOSTAT access, then <code>backtest_yield_model.py</code>, to populate real numbers).
+</div>
+{% endif %}
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header-harvest">📈 Model Performance</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td>Yield MAE</td><td class="text-end"><strong>{{ metrics.mae }} t/ha</strong></td></tr>
+            <tr><td>Yield RMSE</td><td class="text-end"><strong>{{ metrics.rmse }} t/ha</strong></td></tr>
+            <tr><td>Yield R²</td><td class="text-end"><strong>{{ metrics.r2 }}</strong></td></tr>
+            <tr><td>Risk Accuracy</td><td class="text-end"><strong>{{ (metrics.risk_accuracy * 100)|round(1) }}%</strong></td></tr>
+            <tr><td>Risk Precision</td><td class="text-end"><strong>{{ (metrics.risk_precision * 100)|round(1) }}%</strong></td></tr>
+            <tr><td>Risk Recall</td><td class="text-end"><strong>{{ (metrics.risk_recall * 100)|round(1) }}%</strong></td></tr>
+            <tr><td>Risk F1</td><td class="text-end"><strong>{{ (metrics.risk_f1 * 100)|round(1) }}%</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header-harvest">🔧 Data Pipeline Monitor</div>
+      <div class="card-body">
+        {% for stage in pipeline_stages %}
+        <div class="d-flex align-items-center mb-2">
+          <span style="width:24px;">{{ '✅' if stage.done else '⏳' }}</span>
+          <span>{{ stage.name }}</span>
+          {% if not loop.last %}<span class="text-muted ms-auto">↓</span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-4">
+    <div class="card h-100 text-center">
+      <div class="card-header-harvest">🧠 Model Health</div>
+      <div class="card-body" style="font-size:0.9rem;">
+        <div class="d-flex justify-content-between"><span>Last trained</span><strong>{{ health.last_trained }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Training rows</span><strong>{{ model_meta.get('n_rows', '—') }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Features</span><strong>{{ model_meta.get('n_features', '—') }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Yield model</span><strong>{{ model_meta.get('best_regressor', '—') }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Risk model</span><strong>{{ model_meta.get('risk_classifier', '—') }}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100 text-center">
+      <div class="card-header-harvest">👥 Platform Usage</div>
+      <div class="card-body" style="font-size:0.9rem;">
+        <div class="d-flex justify-content-between"><span>Total users</span><strong>{{ health.total_users }}</strong></div>
+        {% for role, count in health.users_by_role.items() %}
+        <div class="d-flex justify-content-between"><span>&nbsp;&nbsp;{{ role|capitalize }}s</span><strong>{{ count }}</strong></div>
+        {% endfor %}
+        <div class="d-flex justify-content-between"><span>Analyses run</span><strong>{{ health.total_predictions }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Proactive alerts fired</span><strong>{{ health.total_alerts }}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100 text-center">
+      <div class="card-header-harvest">⚙️ System Status</div>
+      <div class="card-body" style="font-size:0.9rem;">
+        <div class="d-flex justify-content-between"><span>Proactive alert watcher</span><strong style="color:var(--green);">🟢 Active</strong></div>
+        <div class="d-flex justify-content-between"><span>WhatsApp</span><strong>{{ '🟢 Live' if whatsapp_live else '🔵 Demo mode' }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Email</span><strong>{{ '🟢 Live' if email_live else '🔵 Demo mode' }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Database size</span><strong>{{ health.db_size_kb }} KB</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">🗂️ Data Provenance &amp; Transparency</div>
+  <div class="card-body p-4">
+    <p class="mb-3">Full registry of every dataset RimAI uses — real, synthetic, or hybrid — with generation methodology, confidence notes, and detected gaps.</p>
+    <a href="/admin/data-provenance" class="btn btn-outline-success">Open Data Provenance &amp; Transparency →</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header-harvest">🔍 Sample Backtest — Predicted vs Actual Yield</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" style="font-size:0.87rem;">
+      <thead><tr><th>Province</th><th>Actual yield</th><th>Predicted yield</th></tr></thead>
+      <tbody>
+        {% for r in backtest_results[:10] %}
+        <tr>
+          <td>{{ r.province }}</td>
+          <td>{{ r.actual_yield }} t/ha</td>
+          <td>{{ r.predicted_yield }} t/ha</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

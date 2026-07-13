@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %} | Data Provenance & Transparency{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Admin — Trust Centre</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Data Provenance &amp; Transparency</h2>
+<p class="text-muted mb-4">Every dataset RimAI uses, classified honestly as real, synthetic, or hybrid — so nothing is presented as more grounded than it is.</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem; color:var(--green);">{{ quality.completeness_score }}%</div>
+    <div class="label">Completeness (real+hybrid)</div>
+  </div></div>
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem;">{{ quality.real }}</div>
+    <div class="label">Real datasets</div>
+  </div></div>
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem;">{{ quality.synthetic }}</div>
+    <div class="label">Synthetic datasets</div>
+  </div></div>
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem;">{{ quality.hybrid }}</div>
+    <div class="label">Hybrid datasets</div>
+  </div></div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Dataset Registry</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" style="font-size:0.85rem;">
+      <thead>
+        <tr><th>Dataset</th><th>Category</th><th>Source</th><th>Provider</th><th>Confidence</th><th>Enabled</th></tr>
+      </thead>
+      <tbody>
+        {% for e in registry %}
+        <tr>
+          <td><strong>{{ e.name }}</strong><br>
+            <span class="text-muted" style="font-size:0.8rem;">{{ e.methodology }}</span>
+          </td>
+          <td>{{ e.category }}</td>
+          <td>
+            {% if e.source == 'real' %}<span class="badge bg-success">Real</span>
+            {% elif e.source == 'synthetic' %}<span class="badge" style="background:var(--gold); color:#333;">Synthetic</span>
+            {% else %}<span class="badge bg-info text-dark">Hybrid</span>{% endif %}
+          </td>
+          <td>{{ e.provider }}</td>
+          <td>{{ e.confidence }}</td>
+          <td>
+            <form method="POST" action="/admin/synthetic-toggle" style="display:inline;">
+              <input type="hidden" name="dataset_id" value="{{ e.id }}">
+              <input type="hidden" name="enabled" value="{{ 'false' if e.enabled else 'true' }}">
+              <button type="submit" class="btn btn-sm {{ 'btn-outline-success' if e.enabled else 'btn-outline-secondary' }}">
+                {{ 'Enabled' if e.enabled else 'Disabled' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Why Synthetic Data Was Needed</div>
+  <div class="card-body p-4">
+    {% for e in registry %}
+      {% if e.source in ['synthetic','hybrid'] %}
+      <div class="mb-3">
+        <strong>{{ e.name }}:</strong> {{ e.reason }}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Detected Gaps &amp; Planned Future Datasets</div>
+  <div class="card-body p-4">
+    <ul class="mb-0" style="font-size:0.9rem;">
+      {% for g in gaps %}
+      <li class="mb-2"><strong>{{ g.feature }}</strong> — {{ g.status }}</li>
+      {% endfor %}
+    </ul>
+    <p class="text-muted mt-3 mb-0" style="font-size:0.85rem;">As real farmer-submitted observations, AGRITEX inspection reports, and market price feeds come online, each is designed to slot into this same registry and automatically take priority over its synthetic counterpart — without changing dashboard logic.</p>
+  </div>
+</div>
+{% endblock %}

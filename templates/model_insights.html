@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %} | Model Insights{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Transparency & Validation</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Model Insights</h2>
+<p class="text-muted mb-4">How RimAI's AI models were built, validated, and where they stand as a prototype.</p>
+
+<div class="alert alert-info mb-4" style="border-left:4px solid var(--green); background:#e8f3ec;">
+  <strong>Prototype declaration:</strong> RimAI's models are trained using historical FAOSTAT production data combined with synthetic feature augmentation for proof of concept. Performance metrics reflect cross-validated results on augmented training data. As RimAI collects real farm-level observations from users, model accuracy is expected to improve significantly. All metrics are reported honestly — in-sample and cross-validated.
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem; color:var(--green);">0.824</div>
+    <div class="label">Yield CV R² (in-sample)</div>
+  </div></div>
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem;">0.116</div>
+    <div class="label">Yield MAE (t/ha)</div>
+  </div></div>
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem; color:var(--green);">78.8%</div>
+    <div class="label">Risk Classifier Accuracy</div>
+  </div></div>
+  <div class="col-md-3"><div class="stat-box">
+    <div class="number" style="font-size:1.8rem;">0.735</div>
+    <div class="label">Macro F1 (Risk)</div>
+  </div></div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Data Sources — Real vs Synthetic</div>
+  <div class="card-body p-4">
+    <div class="alert alert-success mb-3">
+      <strong>✅ Real data:</strong> Zimbabwe national maize yield history from FAOSTAT (2000–2024). Seasonal weather (rainfall, temperature, humidity) from NASA POWER satellite reanalysis per province coordinates.
+    </div>
+    <div class="alert alert-warning mb-0">
+      <strong>⚠️ Synthetic augmentation:</strong> ENSO index (from real historical NOAA classifications), soil moisture estimate (derived from rainfall), NDVI proxy (derived from rainfall), fertilizer rate, and planting date were generated using agronomically-calibrated distributions. This is standard practice for prototype ML models where comprehensive farm-level data does not yet exist, and is explicitly disclosed here. Synthetic features will be replaced with real farm observations as RimAI scales.
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Risk Classifier — Confusion Matrix & Per-Class Metrics</div>
+  <div class="card-body p-4">
+    <p class="text-muted" style="font-size:0.9rem;">5-fold cross-validated predictions. Each cell shows how many times the model predicted column label when the true label was the row label.</p>
+    <div class="row g-4">
+      <div class="col-md-5">
+        <table class="table table-bordered text-center" style="font-size:0.88rem;">
+          <thead>
+            <tr><th></th><th colspan="3">Predicted</th></tr>
+            <tr><th>Actual</th><th>High</th><th>Low</th><th>Moderate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>High</strong></td><td style="background:#fde8e8;"><strong>25</strong></td><td>2</td><td>7</td></tr>
+            <tr><td><strong>Low</strong></td><td>3</td><td style="background:#e8f3ec;"><strong>132</strong></td><td>14</td></tr>
+            <tr><td><strong>Moderate</strong></td><td>9</td><td>18</td><td style="background:#fff3cd;"><strong>40</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-7">
+        <table class="table table-hover" style="font-size:0.88rem;">
+          <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge bg-danger">High</span></td><td>0.68</td><td>0.74</td><td>0.70</td><td>34</td></tr>
+            <tr><td><span class="badge" style="background:var(--green);">Low</span></td><td>0.87</td><td>0.89</td><td>0.88</td><td>149</td></tr>
+            <tr><td><span class="badge" style="background:var(--gold); color:#333;">Moderate</span></td><td>0.66</td><td>0.60</td><td>0.62</td><td>67</td></tr>
+          </tbody>
+        </table>
+        <div class="p-3" style="background:var(--mist); border-radius:8px; font-size:0.88rem;">
+          <strong>Reading the confusion matrix:</strong> The model correctly identifies 25/34 High-risk seasons (74% recall) — the most safety-critical class. It occasionally misclassifies Moderate as Low (18 cases), which is the expected failure mode. For a food security system, High-risk recall is the priority metric.
+        </div>
+      </div>
+    </div>
+    <div id="cmChart" style="height:260px; margin-top:1rem;"></div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Feature Importance</div>
+  <div class="card-body"><div id="featChart" style="height:280px;"></div></div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-harvest">Honest Limitations</div>
+  <div class="card-body p-4">
+    <ul class="mb-0" style="font-size:0.9rem;">
+      <li class="mb-2"><strong>National-level ground truth:</strong> FAOSTAT provides national averages. Province-level predictions are derived using agronomic zone priors, not measured provincial data.</li>
+      <li class="mb-2"><strong>Synthetic augmentation:</strong> R² of 0.824 and 78.8% accuracy reflect performance on augmented data. These metrics will be recalibrated as real farm-level data is collected.</li>
+      <li class="mb-2"><strong>Class imbalance:</strong> The training set has more Low-risk observations (149) than High (34), which suppresses High-risk precision. Future versions will apply SMOTE or weighted classes.</li>
+      <li class="mb-0"><strong>Improvement pathway:</strong> Each season of real farm data collected through RimAI replaces synthetic features. The architecture is built for this — synthetic augmentation is a starting point, not a permanent design.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const features = ['Agro Zone','Province Norm','Soil Moisture','Rainfall','ENSO','Planting Month','Fertilizer Rate','Temperature','NDVI','Prev Yield'];
+const importance = [0.718,0.089,0.065,0.056,0.018,0.015,0.014,0.012,0.009,0.004];
+Plotly.newPlot('featChart',[{
+  x: importance.slice().reverse(), y: features.slice().reverse(),
+  type:'bar', orientation:'h',
+  marker:{color: importance.slice().reverse().map(v => v>0.1?'#2d6a4f':'#74c69d')},
+  text: importance.slice().reverse().map(v=>(v*100).toFixed(1)+'%'),
+  textposition:'outside',
+}],[{
+  margin:{t:10,b:40,l:120,r:70},
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{family:'Space Grotesk',size:11}, xaxis:{title:'Importance'},
+}],{responsive:true});
+
+// Precision/Recall comparison chart
+Plotly.newPlot('cmChart',[
+  {name:'Precision', x:['High','Low','Moderate'], y:[0.68,0.87,0.66], type:'bar', marker:{color:'#2d6a4f'}},
+  {name:'Recall',    x:['High','Low','Moderate'], y:[0.74,0.89,0.60], type:'bar', marker:{color:'#d4a017'}},
+  {name:'F1 Score',  x:['High','Low','Moderate'], y:[0.70,0.88,0.62], type:'bar', marker:{color:'#74c69d'}},
+],[{
+  barmode:'group',
+  margin:{t:10,b:40,l:40,r:10},
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{family:'Space Grotesk',size:11},
+  yaxis:{range:[0,1], title:'Score'},
+  legend:{orientation:'h', y:-0.2},
+}],{responsive:true});
+</script>
+{% endblock %}

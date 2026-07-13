@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %} | Farm Assistant{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Module 4</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Farm Assistant</h2>
+<p class="text-muted mb-4">Ask anything. Upload a photo of a leaf, pest, or symptom for identification. The assistant already knows your latest farm analysis.</p>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div id="chatWindow" style="height: 460px; overflow-y: auto; padding: 1.5rem; background: var(--mist);">
+      {% if not chat_log %}
+        <div class="text-center text-muted mt-5">
+          <div style="font-size:2.5rem;">🌾</div>
+          <p class="mt-2">Ask me anything about your farm — fertilizer timing, pest symptoms, weather concerns. You can also upload a photo.</p>
+        </div>
+      {% endif %}
+      {% for msg in chat_log %}
+        <div class="d-flex mb-3 {{ 'justify-content-end' if msg.role == 'user' else '' }}">
+          <div style="max-width:75%; padding:0.8rem 1.1rem; border-radius:14px;
+                      background: {{ 'var(--green)' if msg.role == 'user' else 'white' }};
+                      color: {{ 'white' if msg.role == 'user' else 'var(--soil)' }};
+                      box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            {{ msg.content }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="p-3 border-top" style="background:white;">
+      <div id="imagePreview" class="mb-2" style="display:none;">
+        <img id="previewImg" style="max-height:80px; border-radius:8px;">
+        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="clearImage()">Remove</button>
+      </div>
+      <form id="chatForm" class="d-flex gap-2">
+        <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="previewImage(event)">
+        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('imageInput').click()">📷</button>
+        <input type="text" id="messageInput" class="form-control" placeholder="Type your question..." required>
+        <button type="submit" class="btn btn-harvest px-4">Send</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const chatWindow = document.getElementById('chatWindow');
+chatWindow.scrollTop = chatWindow.scrollHeight;
+
+let selectedImage = null;
+
+function previewImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  selectedImage = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('imagePreview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage() {
+  selectedImage = null;
+  document.getElementById('imageInput').value = '';
+  document.getElementById('imagePreview').style.display = 'none';
+}
+
+function appendMessage(content, role) {
+  const div = document.createElement('div');
+  div.className = `d-flex mb-3 ${role === 'user' ? 'justify-content-end' : ''}`;
+  div.innerHTML = `<div style="max-width:75%; padding:0.8rem 1.1rem; border-radius:14px;
+                background: ${role === 'user' ? 'var(--green)' : 'white'};
+                color: ${role === 'user' ? 'white' : 'var(--soil)'};
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06);">${content}</div>`;
+  chatWindow.appendChild(div);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+document.getElementById('chatForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('messageInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  appendMessage(message + (selectedImage ? ' 📷' : ''), 'user');
+  input.value = '';
+  const imgToSend = selectedImage;
+  clearImage();
+
+  const thinkingDiv = document.createElement('div');
+  thinkingDiv.className = 'd-flex mb-3';
+  thinkingDiv.id = 'thinkingIndicator';
+  thinkingDiv.innerHTML = `<div style="padding:0.8rem 1.1rem; border-radius:14px; background:white; color:#888;">Thinking...</div>`;
+  chatWindow.appendChild(thinkingDiv);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  const formData = new FormData();
+  formData.append('message', message);
+  if (imgToSend) formData.append('image', imgToSend);
+
+  try {
+    const resp = await fetch('/api/chat', { method: 'POST', body: formData });
+    const data = await resp.json();
+    document.getElementById('thinkingIndicator').remove();
+    if (data.success) {
+      appendMessage(data.reply, 'assistant');
+    } else {
+      appendMessage('Sorry, something went wrong: ' + data.error, 'assistant');
+    }
+  } catch (err) {
+    document.getElementById('thinkingIndicator').remove();
+    appendMessage('Connection error. Please try again.', 'assistant');
+  }
+});
+</script>
+{% endblock %}

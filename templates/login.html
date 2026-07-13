@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %} | Login{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card mt-5">
+      <div class="card-header-harvest"><h5 class="mb-0">Sign in to RimAI</h5></div>
+      <div class="card-body p-4">
+        <form method="POST">
+          <div class="mb-3"><label class="form-label">Username</label>
+            <input name="username" class="form-control" placeholder="demo" required></div>
+          <div class="mb-3"><label class="form-label">Password</label>
+            <input name="password" type="password" class="form-control" placeholder="rimai2026" required></div>
+          <button class="btn btn-harvest w-100" type="submit">Login</button>
+        </form>
+        <p class="text-center mt-3 text-muted">No account? <a href="/register">Register</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

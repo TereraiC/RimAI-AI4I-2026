@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %} | Crop Advisor{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Module 1</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Crop Advisor</h2>
+<p class="text-muted mb-4">Minimal input — RimAI fetches live weather automatically and checks your rotation history and pest risk.</p>
+
+<div class="row">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header-harvest">Farm Information</div>
+      <div class="card-body p-4">
+        <form method="POST" id="advisorForm">
+          <input type="hidden" name="lat" id="lat">
+          <input type="hidden" name="lon" id="lon">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Province</label>
+            <select name="province" class="form-select" required>
+              {% for p in provinces %}<option>{{ p }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">District (optional)</label>
+            <input name="district" class="form-control" placeholder="e.g. Hurungwe">
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="useLocation()">📍 Use my GPS location</button>
+            <small class="text-muted d-block mt-1" id="locStatus"></small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Soil Type</label>
+            <select name="soil_type" class="form-select">
+              {% for s in soil_types %}<option>{{ s }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Previous Crop on This Field</label>
+            <select name="previous_crop" class="form-select">
+              {% for c in previous_crops %}<option>{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Years of Continuous Same Crop</label>
+            <input name="years_continuous" type="number" min="1" max="10" value="1" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Intended Planting Date</label>
+            <input name="planting_date" type="date" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Farm Size (ha)</label>
+            <input name="farm_size" type="number" step="0.5" min="0.5" value="1" class="form-control">
+          </div>
+          <button class="btn btn-harvest w-100 py-2" type="submit">Analyse Farm →</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if result %}
+  <div class="col-lg-7 mt-4 mt-lg-0">
+    <div class="result-panel">
+      <p class="section-eyebrow mb-2">AI Recommendation</p>
+      <h4 style="color:var(--green);">Maize Advisory Report</h4>
+
+      <div class="row g-3 mt-1">
+        <div class="col-6">
+          <div class="stat-box">
+            <div class="number" style="font-size:1.6rem;">
+              {% if result.timing == "plant_now" %}✅ Plant Now
+              {% elif result.timing == "wait" %}⏳ Wait
+              {% else %}⚠️ Risky{% endif %}
+            </div>
+            <div class="label">Planting Decision</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="stat-box">
+            <div class="number" style="font-size:1.4rem;">{{ result.risk_label }}</div>
+            <div class="label">Risk Level</div>
+            {% if result.risk_confidence %}
+            <div style="font-size:0.78rem; color:var(--green); margin-top:4px;">{{ result.risk_confidence }}% confidence</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px;">
+        <strong>🌦️ Weather ({{ result.weather.source }}):</strong><br>
+        Rainfall: {{ result.weather.total_rainfall_mm }} mm &nbsp;|&nbsp;
+        Avg Temp: {{ result.weather.avg_temp_c }}°C &nbsp;|&nbsp;
+        Humidity: {{ result.weather.avg_humidity_pct }}%
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px;">
+        <strong>Timing:</strong> {{ result.timing_msg }}<br>
+        <strong>Recommended Variety:</strong> {{ result.recommended_variety }} &nbsp;|&nbsp;
+        <strong>Zone:</strong> {{ result.agro_zone }}
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px;">
+        <strong>🌿 Fertilizer Recommendation</strong><br>
+        Compound D (basal): <strong>{{ result.fertilizer.compound_d_kg }} kg</strong><br>
+        Ammonium Nitrate (top dress): <strong>{{ result.fertilizer.an_kg }} kg</strong><br>
+        <span class="text-muted" style="font-size:0.9rem;">{{ result.fertilizer.notes }}</span>
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px;">
+        <strong>💧 Irrigation:</strong> {{ result.irrigation }}
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px; border-left:4px solid {{ '#c0392b' if result.rotation.rotation_score > 20 else ('#d4a017' if result.rotation.rotation_score > 5 else '#2d6a4f') }};">
+        <strong>🔄 Rotation Analysis:</strong> {{ result.rotation.verdict }}<br>
+        <span class="text-muted" style="font-size:0.9rem;">{{ result.rotation.note }}</span>
+        {% if result.rotation.continuous_warning %}
+        <br><span class="text-danger" style="font-size:0.9rem;">⚠️ {{ result.rotation.continuous_warning }}</span>
+        {% endif %}
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px; border-left:4px solid {{ '#c0392b' if result.pest_risk.overall_risk == 'High' else ('#d4a017' if result.pest_risk.overall_risk == 'Moderate' else '#2d6a4f') }};">
+        <strong>🐛 Pest & Disease Risk:</strong> {{ result.pest_risk.overall_risk }}
+        {% if result.pest_risk.active_alerts %}
+          {% for alert in result.pest_risk.active_alerts %}
+          <div class="mt-2" style="font-size:0.9rem;">
+            <strong>{{ alert.name }}</strong> ({{ alert.severity }}) — {{ alert.window }}<br>
+            <span class="text-muted">{{ alert.action }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="mt-2 text-muted" style="font-size:0.9rem;">No elevated pest/disease signals detected for current conditions.</div>
+        {% endif %}
+      </div>
+
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px; border-left:4px solid var(--soil);">
+        <strong>💰 Economic Impact</strong><br>
+        {% if result.economic %}
+        <div class="row g-2 mt-1">
+          <div class="col-6"><small class="text-muted">Predicted Revenue</small><br><strong>USD {{ "{:,}".format(result.economic.predicted_revenue_usd) }}</strong></div>
+          <div class="col-6"><small class="text-muted">Province Norm Revenue</small><br><strong>USD {{ "{:,}".format(result.economic.province_norm_revenue_usd) }}</strong></div>
+          <div class="col-6"><small class="text-muted">Revenue Gap vs Norm</small><br><strong style="color:var(--red);">USD {{ "{:,}".format(result.economic.revenue_gap_usd) }}</strong></div>
+          <div class="col-6"><small class="text-muted">Fertilizer Cost</small><br><strong>USD {{ "{:,}".format(result.economic.fertilizer_cost_usd) }}</strong></div>
+          <div class="col-12"><small class="text-muted">Gross Margin After Inputs</small><br>
+            <strong style="color:{{ 'var(--green)' if result.economic.gross_margin_usd > 0 else 'var(--red)' }};">
+              USD {{ "{:,}".format(result.economic.gross_margin_usd) }}
+            </strong>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if result.explanation and result.explanation.factors %}
+      <div class="mt-3 p-3" style="background:white; border-radius:8px; border-left:4px solid #e76f51;">
+        <strong>🔍 Why This Risk Level?</strong>
+        <ul class="mt-2 mb-0" style="font-size:0.88rem; padding-left:1.2rem;">
+          {% for factor in result.explanation.factors %}
+          <li class="mb-1">{{ factor }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="mt-3 p-3" style="background:white; border-radius:8px; border-left:4px solid var(--green);">
+        <strong>✅ Recommended Interventions</strong>
+        {% for m in result.explanation.mitigations %}
+        <div class="mt-2 p-2" style="background:var(--mist); border-radius:6px; font-size:0.88rem;">
+          <strong>{{ loop.index }}. {{ m.action }}</strong><br>
+          <span style="color:var(--green);">📈 {{ m.impact }}</span>
+          <span class="ms-2 badge" style="background:{{ 'var(--red)' if m.urgency == 'Immediate' else ('var(--gold)' if m.urgency == 'This season' else '#888') }}; color:white; font-size:0.75rem;">{{ m.urgency }}</span><br>
+          <small class="text-muted">Source: {{ m.source }}</small>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <a href="/chat" class="btn btn-gold mt-3 w-100">🤖 Ask the Virtual Agronomist about this report</a>
+
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function useLocation() {
+  const status = document.getElementById('locStatus');
+  if (!navigator.geolocation) {
+    status.innerText = 'GPS not supported on this device.';
+    return;
+  }
+  status.innerText = 'Locating...';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById('lat').value = pos.coords.latitude;
+      document.getElementById('lon').value = pos.coords.longitude;
+      status.innerText = `📍 Location captured (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
+    },
+    () => { status.innerText = 'Could not get location — using province estimate instead.'; }
+  );
+}
+</script>
+{% endblock %}

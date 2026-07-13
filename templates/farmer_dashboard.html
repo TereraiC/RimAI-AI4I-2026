@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %} | My AI Farm Manager{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Farmer Dashboard</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">My AI Farm Manager</h2>
+<p class="text-muted mb-4">{{ display_name }}'s farm — {{ farm_data.get('province','') }}{% if farm_data.get('district') %}, {{ farm_data.get('district') }}{% endif %}</p>
+
+{% if not has_analysis %}
+<div class="alert alert-warning">
+  Run the <a href="/advisor">Crop Advisor</a> first to unlock your Farm Health Score, daily brief, and yield forecast.
+</div>
+{% else %}
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-3">
+    <div class="card h-100 text-center">
+      <div class="card-header-harvest">🩺 Farm Health Score</div>
+      <div class="card-body d-flex flex-column justify-content-center">
+        <div style="font-size:3rem; font-weight:700; color:{{ 'var(--green)' if score.overall >= 70 else ('var(--gold)' if score.overall >= 45 else 'var(--red)') }};">{{ score.overall }}<span style="font-size:1.3rem;">/100</span></div>
+        <div class="mt-2" style="font-size:0.8rem; text-align:left;">
+          <div class="d-flex justify-content-between"><span>🌦️ Weather Risk</span><span>{{ score.risk }}</span></div>
+          <div class="progress mb-2" style="height:5px;"><div class="progress-bar" style="width:{{ score.risk }}%; background:var(--green);"></div></div>
+          <div class="d-flex justify-content-between"><span>🐛 Pest Risk</span><span>{{ score.pest }}</span></div>
+          <div class="progress mb-2" style="height:5px;"><div class="progress-bar" style="width:{{ score.pest }}%; background:var(--gold);"></div></div>
+          <div class="d-flex justify-content-between"><span>🌽 Crop Condition</span><span>{{ score.yield }}</span></div>
+          <div class="progress mb-2" style="height:5px;"><div class="progress-bar" style="width:{{ score.yield }}%; background:var(--lime);"></div></div>
+          <div class="d-flex justify-content-between"><span>💰 Financial Health</span><span>{{ score.financial }}</span></div>
+          <div class="progress" style="height:5px;"><div class="progress-bar" style="width:{{ score.financial }}%; background:var(--soil);"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header-harvest">🗞️ AI Daily Brief</div>
+      <div class="card-body d-flex align-items-center">
+        <p class="mb-0" style="font-size:1.05rem;">{{ brief }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header-harvest">🌾 Yield Forecast</div>
+      <div class="card-body">
+        <div style="font-size:1.8rem; font-weight:700; color:var(--green);">{{ farm_data.yield_t_ha }} t/ha</div>
+        <div class="text-muted" style="font-size:0.85rem;">Province benchmark: {{ benchmark_yield }} t/ha</div>
+        {% if yield_vs_benchmark_pct >= 0 %}
+        <div class="badge bg-success mt-2">+{{ yield_vs_benchmark_pct }}% vs benchmark</div>
+        {% else %}
+        <div class="badge bg-danger mt-2">{{ yield_vs_benchmark_pct }}% vs benchmark</div>
+        <div class="text-muted mt-2" style="font-size:0.8rem;">Closing the rotation/pest gaps below could recover roughly <strong>+{{ recoverable_t_ha }} t/ha</strong>.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if memory_note %}
+<div class="card mb-4" style="border-left:4px solid var(--gold);">
+  <div class="card-body d-flex align-items-start gap-3">
+    <div style="font-size:1.6rem;">🧠</div>
+    <div>
+      <div class="fw-semibold" style="color:var(--green);">Farm Memory</div>
+      <p class="mb-0">{{ memory_note }}</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header-harvest">📅 Action Calendar</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" style="font-size:0.87rem;">
+          <thead><tr><th>Date</th><th>Action</th></tr></thead>
+          <tbody>
+            {% for e in calendar %}
+            <tr style="{{ 'opacity:0.45;' if e.is_past else '' }}">
+              <td style="white-space:nowrap;">{{ e.date_str }}{% if not e.is_past %}<br><small class="text-muted">in {{ e.days_away }}d</small>{% endif %}</td>
+              <td><strong>{{ e.label }}</strong><br><small class="text-muted">{{ e.note }}</small></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header-harvest">🔮 What-If Scenario Simulator</div>
+      <div class="card-body">
+        <form method="POST" action="/farm-manager">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small">Rainfall change</label>
+              <select name="rainfall_pct" class="form-select form-select-sm">
+                <option value="0" {{ 'selected' if scenario_form.rainfall_pct=='0' }}>No change</option>
+                <option value="-20" {{ 'selected' if scenario_form.rainfall_pct=='-20' }}>-20% (dry spell)</option>
+                <option value="-40" {{ 'selected' if scenario_form.rainfall_pct=='-40' }}>-40% (severe drought)</option>
+                <option value="20" {{ 'selected' if scenario_form.rainfall_pct=='20' }}>+20% (good rains)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Fertilizer</label>
+              <select name="fertilizer" class="form-select form-select-sm">
+                <option value="on" {{ 'selected' if scenario_form.fertilizer=='on' }}>Apply as recommended</option>
+                <option value="off" {{ 'selected' if scenario_form.fertilizer=='off' }}>Skip fertilizer</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-harvest btn-sm w-100" type="submit" name="run_scenario" value="1">Run Simulation</button>
+        </form>
+
+        {% if scenario %}
+        <div class="mt-3 p-3" style="background:var(--mist); border-radius:10px;">
+          <div class="d-flex justify-content-between">
+            <span>New yield forecast</span><strong>{{ scenario.yield_t_ha }} t/ha ({{ '+' if scenario.yield_delta >= 0 }}{{ scenario.yield_delta }})</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>New risk level</span><strong>{{ scenario.risk_label }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Revenue impact</span>
+            <strong style="color:{{ 'var(--green)' if scenario.revenue_delta_usd >= 0 else 'var(--red)' }};">{{ '+' if scenario.revenue_delta_usd >= 0 }}${{ scenario.revenue_delta_usd }}</strong>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

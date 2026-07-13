@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %} | National Food Intelligence{% endblock %}
+{% block content %}
+<p class="section-eyebrow mb-1">Ministry Dashboard</p>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">National Food Intelligence Platform</h2>
+<p class="text-muted mb-4">Live rollup across all 10 provinces, powered by the same models farmers and AGRITEX officers see.</p>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-3">
+    <div class="card h-100 text-center">
+      <div class="card-header-harvest">🇿🇼 Food Security Index</div>
+      <div class="card-body d-flex flex-column justify-content-center">
+        <div style="font-size:3rem; font-weight:700; color:{{ 'var(--green)' if fsi.score >= 70 else ('var(--gold)' if fsi.score >= 45 else 'var(--red)') }};">{{ fsi.score }}<span style="font-size:1.3rem;">/100</span></div>
+        <div class="text-muted" style="font-size:0.85rem;">{{ fsi.at_risk_provinces }} of 10 provinces at elevated risk</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header-harvest">🌽 National Maize Production vs Demand</div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-baseline">
+          <span>Projected production</span><strong>{{ '{:,}'.format(production.total_tonnes) }} t</strong>
+        </div>
+        <div class="d-flex justify-content-between align-items-baseline">
+          <span>National requirement (est.)</span><strong>{{ '{:,}'.format(production.demand_tonnes) }} t</strong>
+        </div>
+        <div class="mt-2 p-2 text-center" style="background:{{ 'rgba(74,124,44,0.12)' if production.status=='Surplus' else 'rgba(196,64,64,0.12)' }}; border-radius:8px;">
+          <strong style="color:{{ 'var(--green)' if production.status=='Surplus' else 'var(--red)' }};">
+            {{ production.status }}: {{ '{:,}'.format(production.gap_tonnes|abs) }} t
+          </strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header-harvest">🚨 Early Warning Feed</div>
+      <div class="card-body" style="font-size:0.85rem;">
+        {% for w in warnings %}
+        <div class="mb-2">{{ w }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header-harvest">📊 Input Allocation Intelligence — Priority Districts</div>
+      <div class="card-body p-0">
+        {% if allocation %}
+        <table class="table table-hover mb-0" style="font-size:0.87rem;">
+          <thead><tr><th>Province</th><th>Recoverable</th><th>Potential recovered</th><th>Risk</th></tr></thead>
+          <tbody>
+            {% for a in allocation %}
+            <tr>
+              <td><strong>{{ a.province }}</strong></td>
+              <td>+{{ a.recoverable_t_ha }} t/ha</td>
+              <td>+{{ '{:,}'.format(a.recoverable_tonnes) }} t</td>
+              <td>
+                {% if a.risk == 'High' %}<span class="badge bg-danger">High</span>
+                {% else %}<span class="badge bg-warning text-dark">Moderate</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="text-muted p-2 mb-0" style="font-size:0.8rem;">Prioritise fertilizer allocation to these provinces for the highest return per bag distributed.</p>
+        {% else %}
+        <div class="text-center text-muted p-4">All provinces are at or above their yield benchmark.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header-harvest">🔮 Policy Simulation</div>
+      <div class="card-body">
+        <form method="POST" action="/ministry">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small">Rainfall change</label>
+              <select name="rainfall_pct" class="form-select form-select-sm">
+                <option value="0" {{ 'selected' if sim_form.rainfall_pct=='0' }}>No change</option>
+                <option value="-15" {{ 'selected' if sim_form.rainfall_pct=='-15' }}>-15%</option>
+                <option value="-30" {{ 'selected' if sim_form.rainfall_pct=='-30' }}>-30% (drought)</option>
+                <option value="15" {{ 'selected' if sim_form.rainfall_pct=='15' }}>+15%</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Temperature change</label>
+              <select name="temp_delta" class="form-select form-select-sm">
+                <option value="0" {{ 'selected' if sim_form.temp_delta=='0' }}>No change</option>
+                <option value="1" {{ 'selected' if sim_form.temp_delta=='1' }}>+1°C</option>
+                <option value="2" {{ 'selected' if sim_form.temp_delta=='2' }}>+2°C</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-harvest btn-sm w-100" type="submit" name="run_policy_sim" value="1">Run National Simulation</button>
+        </form>
+
+        {% if policy_sim %}
+        <div class="mt-3 p-3" style="background:var(--mist); border-radius:10px; font-size:0.9rem;">
+          <div class="d-flex justify-content-between"><span>Baseline production</span><strong>{{ '{:,}'.format(policy_sim.baseline_tonnes) }} t</strong></div>
+          <div class="d-flex justify-content-between"><span>Scenario production</span><strong>{{ '{:,}'.format(policy_sim.scenario_tonnes) }} t</strong></div>
+          <div class="d-flex justify-content-between"><span>Change</span><strong style="color:{{ 'var(--green)' if policy_sim.production_delta_pct >= 0 else 'var(--red)' }};">{{ '+' if policy_sim.production_delta_pct >= 0 }}{{ policy_sim.production_delta_pct }}%</strong></div>
+          <div class="d-flex justify-content-between"><span>Resulting status</span><strong>{{ policy_sim.new_status }} ({{ '{:,}'.format(policy_sim.new_gap_tonnes|abs) }} t)</strong></div>
+          {% if policy_sim.provinces_hardest_hit %}
+          <div class="mt-2 text-muted">Hardest hit: {{ policy_sim.provinces_hardest_hit|join(', ') }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header-harvest">🗺️ Province Snapshot</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" style="font-size:0.87rem;">
+      <thead><tr><th>Province</th><th>Zone</th><th>Yield</th><th>vs Norm</th><th>Risk</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        {% for prov, p in province_data.items() %}
+        <tr>
+          <td><strong>{{ prov }}</strong></td>
+          <td>{{ p.zone }}</td>
+          <td>{{ p.yield }} t/ha</td>
+          <td style="color:{{ 'var(--green)' if p.vs_norm >= 0 else 'var(--red)' }};">{{ '+' if p.vs_norm >= 0 }}{{ p.vs_norm }}%</td>
+          <td>
+            {% if p.risk == 'High' %}<span class="badge bg-danger">High</span>
+            {% elif p.risk == 'Moderate' %}<span class="badge bg-warning text-dark">Moderate</span>
+            {% else %}<span class="badge bg-success">Low</span>{% endif %}
+          </td>
+          <td style="font-size:0.8rem;">{{ p.recommendation }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
