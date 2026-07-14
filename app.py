@@ -608,7 +608,7 @@ def compute_national_snapshot():
     province_data = {}
     for prov, meta in PROVINCE_META.items():
         weather = get_weather_for_farm(prov)
-        rainfall = weather.get('total_rainfall_mm', meta['avg_rain'])
+        rainfall = weather.get('extrapolated_season_total_mm', weather.get('total_rainfall_mm', meta['avg_rain']))
         result = predict_yield({
             'province': prov, 'rainfall_mm': rainfall,
             'temperature_c': weather.get('avg_temp_c', 22),

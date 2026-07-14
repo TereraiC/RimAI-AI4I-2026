@@ -38,7 +38,7 @@ def build_explanation(analysis):
     mitigations = []
 
     # ── Rainfall analysis ────────────────────────────────────────────────────
-    rainfall    = float(weather.get("total_rainfall_mm", 600))
+    rainfall    = float(weather.get("extrapolated_season_total_mm", weather.get("total_rainfall_mm", 600)))
     avg_rain    = meta["avg_rain"]
     rain_pct    = (rainfall - avg_rain) / avg_rain * 100
 

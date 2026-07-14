@@ -64,7 +64,7 @@ def policy_simulation(rainfall_pct_change, temp_delta_c, area_ha_map, province_m
     provinces_hit = []
     for prov, meta in province_meta.items():
         weather = get_weather_for_farm(prov)
-        base_rain = weather.get("total_rainfall_mm", meta["avg_rain"])
+        base_rain = weather.get("extrapolated_season_total_mm", weather.get("total_rainfall_mm", meta["avg_rain"]))
         base_temp = weather.get("avg_temp_c", 22)
         area = area_ha_map.get(prov, 50000)
 

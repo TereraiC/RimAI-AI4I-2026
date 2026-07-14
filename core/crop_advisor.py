@@ -104,7 +104,7 @@ def get_full_farm_analysis(inputs):
     cpd_kg = round(soil_data["Compound_D"] * farm_size)
 
     # ── 4. Irrigation, based on live/fallback rainfall ──
-    rainfall = weather.get("total_rainfall_mm", 600)
+    rainfall = weather.get("extrapolated_season_total_mm", weather.get("total_rainfall_mm", 600))
     if rainfall >= 700:
         irrigation = "Rainfed conditions look sufficient. Supplemental irrigation optional during dry spells."
     elif rainfall >= 450:
@@ -137,7 +137,7 @@ def get_full_farm_analysis(inputs):
         from core.harvest_model import predict_yield as _py
         _yresult = _py({
             "province": province,
-            "rainfall_mm": weather.get("total_rainfall_mm", rainfall),
+            "rainfall_mm": weather.get("extrapolated_season_total_mm", rainfall),
             "temperature_c": weather.get("avg_temp_c", 22),
             "planting_month": month,
             "farm_size_ha": farm_size,
