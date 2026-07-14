@@ -57,8 +57,8 @@ def early_warning_feed(province_data):
 def policy_simulation(rainfall_pct_change, temp_delta_c, area_ha_map, province_meta):
     """Re-run the national yield model with adjusted rainfall/temperature
     across every province and compare total production to baseline."""
-    from harvest_model import predict_yield
-    from weather_service import get_weather_for_farm
+    from core.harvest_model import predict_yield
+    from data_pipeline.weather_service import get_weather_for_farm
 
     baseline_total, scenario_total = 0, 0
     provinces_hit = []

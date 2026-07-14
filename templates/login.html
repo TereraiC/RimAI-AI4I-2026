@@ -8,14 +8,56 @@
       <div class="card-body p-4">
         <form method="POST">
           <div class="mb-3"><label class="form-label">Username</label>
-            <input name="username" class="form-control" placeholder="demo" required></div>
+            <input id="loginUsername" name="username" class="form-control" placeholder="demo" required></div>
           <div class="mb-3"><label class="form-label">Password</label>
-            <input name="password" type="password" class="form-control" placeholder="rimai2026" required></div>
+            <input id="loginPassword" name="password" type="password" class="form-control" placeholder="rimai2026" required></div>
           <button class="btn btn-harvest w-100" type="submit">Login</button>
         </form>
         <p class="text-center mt-3 text-muted">No account? <a href="/register">Register</a></p>
       </div>
     </div>
+
+    <div class="card mt-3">
+      <div class="card-header-harvest d-flex justify-content-between align-items-center">
+        <span>Demo Accounts — Explore Every Dashboard</span>
+      </div>
+      <div class="card-body p-3">
+        <p class="text-muted mb-3" style="font-size:0.85rem;">
+          RimAI has four role-based dashboards. Click any account below to fill in its login
+          automatically, then click Login above.
+        </p>
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-outline-success text-start demo-account-btn"
+                  data-user="demo" data-pass="rimai2026">
+            <strong>Farmer</strong> — <code>demo</code> / <code>rimai2026</code>
+            <div class="text-muted" style="font-size:0.78rem;">Farm Health Score, yield prediction, Virtual Agronomist chat</div>
+          </button>
+          <button type="button" class="btn btn-outline-success text-start demo-account-btn"
+                  data-user="officer" data-pass="officer2026">
+            <strong>AGRITEX Officer</strong> — <code>officer</code> / <code>officer2026</code>
+            <div class="text-muted" style="font-size:0.78rem;">Farmer priority queue, ward risk table, field visits</div>
+          </button>
+          <button type="button" class="btn btn-outline-success text-start demo-account-btn"
+                  data-user="ministry" data-pass="ministry2026">
+            <strong>Ministry</strong> — <code>ministry</code> / <code>ministry2026</code>
+            <div class="text-muted" style="font-size:0.78rem;">National food security index, interactive province map</div>
+          </button>
+          <button type="button" class="btn btn-outline-success text-start demo-account-btn"
+                  data-user="admin" data-pass="admin2026">
+            <strong>Admin</strong> — <code>admin</code> / <code>admin2026</code>
+            <div class="text-muted" style="font-size:0.78rem;">Model performance, backtest results, Data Provenance & Transparency</div>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+<script>
+document.querySelectorAll('.demo-account-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.getElementById('loginUsername').value = btn.dataset.user;
+    document.getElementById('loginPassword').value = btn.dataset.pass;
+  });
+});
+</script>
 {% endblock %}

@@ -46,3 +46,26 @@ def test_fresh_database_has_all_required_tables_and_columns(monkeypatch, tmp_pat
     assert "full_name" in user_cols, "users table is missing the full_name column"
 
     conn.close()
+
+
+def test_fresh_database_has_all_four_demo_accounts(monkeypatch, tmp_path):
+    """Regression test for a real bug found live on the Render deployment:
+    init_db() only ever seeded 'demo' and 'officer' accounts. 'ministry'
+    and 'admin' had only ever been added by hand in an old development
+    database, so every genuinely fresh install (including the first
+    Render deploy) had no way to log in as Ministry or Admin at all."""
+    fake_db = str(tmp_path / "fresh_accounts_test.db")
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "DB", fake_db)
+    app_module.init_db()
+
+    conn = sqlite3.connect(fake_db)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT username, role FROM users").fetchall()
+    usernames = {r["username"] for r in rows}
+    conn.close()
+
+    required_accounts = {"demo", "officer", "ministry", "admin"}
+    missing = required_accounts - usernames
+    assert not missing, f"Fresh database is missing demo accounts: {missing}"

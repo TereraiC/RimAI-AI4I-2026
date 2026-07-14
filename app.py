@@ -126,6 +126,10 @@ def init_db():
                        ('demo', generate_password_hash('rimai2026'), 'farmer'))
             db.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
                        ('officer', generate_password_hash('officer2026'), 'officer'))
+            db.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
+                       ('ministry', generate_password_hash('ministry2026'), 'ministry'))
+            db.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
+                       ('admin', generate_password_hash('admin2026'), 'admin'))
             seed_data = [
                 ('Mashonaland West', 2020, 'Maize', 1.8, 650, 120000),
                 ('Mashonaland West', 2021, 'Maize', 2.1, 720, 130000),
@@ -173,6 +177,23 @@ def init_db():
         if "full_name" not in existing_cols:
             db.execute("ALTER TABLE users ADD COLUMN full_name TEXT")
             db.commit()
+
+        # Defensive check: a database seeded before ministry/admin demo
+        # accounts existed (e.g. the first Render deploy) has demo/officer
+        # but not ministry/admin, so the block above never runs again.
+        # Add any missing demo accounts explicitly, every startup.
+        demo_accounts = [
+            ("demo", "rimai2026", "farmer"),
+            ("officer", "officer2026", "officer"),
+            ("ministry", "ministry2026", "ministry"),
+            ("admin", "admin2026", "admin"),
+        ]
+        for uname, pwd, role in demo_accounts:
+            row = db.execute("SELECT id FROM users WHERE username=?", (uname,)).fetchone()
+            if not row:
+                db.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
+                           (uname, generate_password_hash(pwd), role))
+        db.commit()
 
 
 init_db()
@@ -503,7 +524,7 @@ def national_dashboard():
 @app.route('/ministry', methods=['GET', 'POST'])
 @login_required
 def ministry_dashboard():
-    from harvest_model import PROVINCE_META
+    from core.harvest_model import PROVINCE_META
     province_data = compute_national_snapshot()
     fsi = ministry_module.food_security_index(province_data)
     production = ministry_module.national_production(province_data)

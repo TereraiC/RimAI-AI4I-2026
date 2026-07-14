@@ -110,7 +110,7 @@ def get_full_farm_analysis(inputs):
     risk_confidence = None
     yield_t_ha = None
     try:
-        from harvest_model import predict_yield as _py
+        from core.harvest_model import predict_yield as _py
         _yresult = _py({
             "province": province,
             "rainfall_mm": weather.get("total_rainfall_mm", rainfall),
