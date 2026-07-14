@@ -602,6 +602,38 @@ def national_factor_summary(rainfall, avg_rain, temp, risk_label):
 
     return {"factor": factor, "detail": detail, "recommendation": rec}
 
+def season_outlook_context():
+    """
+    RimAI has no ground-truth data on who has actually planted, or when —
+    that only exists for individual farmers who've used the Crop Advisor.
+    The national map, Food Security Index, and Early Warning Feed are all
+    built from a rainfall/climate-driven model assuming standard November
+    planting timing, not live per-farm monitoring. This makes that
+    distinction explicit wherever those views are shown, using the same
+    season-window detection already built for the rainfall fix.
+    """
+    from data_pipeline.weather_service import get_season_window
+    _, _, prorate, season_label = get_season_window()
+    year_range = season_label.split(" ")[0]  # e.g. "2025/2026" from "2025/2026 season (completed)"
+    today = datetime.date.today()
+    in_growing_season = 10 <= today.month or today.month <= 3
+    if in_growing_season:
+        return {
+            "mode": "in_season",
+            "badge": "📈 In-Season Forecast",
+            "message": (f"This outlook is based on real rainfall for the {year_range} season to date, "
+                        f"assuming standard planting timing for each province. It reflects province-wide climate "
+                        f"conditions, not confirmed per-farm planting status — individual farms may differ."),
+        }
+    return {
+        "mode": "pre_season",
+        "badge": "🌱 Pre-Season Outlook",
+        "message": (f"The current growing season hasn't started yet. This outlook is based on the completed "
+                     f"{year_range} season's rainfall performance and assumes standard November planting "
+                     f"timing — it is a seasonal forecast, not a report of crops currently in the ground."),
+    }
+
+
 def compute_national_snapshot():
     from core.harvest_model import predict_yield, PROVINCE_META
     from data_pipeline.weather_service import get_weather_for_farm
@@ -634,8 +666,9 @@ def national_dashboard():
         flash('The national map is a Ministry-level view. Your AGRITEX Centre shows your assigned province in full detail.', 'info')
         return redirect(url_for('agritex_dashboard'))
     province_data = compute_national_snapshot()
+    outlook = season_outlook_context()
     return render_template('national_dashboard.html',
-                           province_data=json.dumps(province_data))
+                           province_data=json.dumps(province_data), outlook=outlook)
 
 
 @app.route('/ministry', methods=['GET', 'POST'])
@@ -643,9 +676,10 @@ def national_dashboard():
 def ministry_dashboard():
     from core.harvest_model import PROVINCE_META
     province_data = compute_national_snapshot()
+    outlook = season_outlook_context()
     fsi = ministry_module.food_security_index(province_data)
     production = ministry_module.national_production(province_data)
-    warnings = ministry_module.early_warning_feed(province_data)
+    warnings = ministry_module.early_warning_feed(province_data, in_season=(outlook["mode"] == "in_season"))
     allocation = ministry_module.input_allocation_intelligence(province_data)
 
     policy_sim = None
@@ -659,7 +693,7 @@ def ministry_dashboard():
 
     return render_template('ministry_dashboard.html', fsi=fsi, production=production,
                            warnings=warnings, allocation=allocation, policy_sim=policy_sim,
-                           sim_form=sim_form, province_data=province_data)
+                           sim_form=sim_form, province_data=province_data, outlook=outlook)
 
 
 @app.route('/model-insights')
@@ -984,7 +1018,8 @@ def agritex_dashboard():
 
     return render_template('agritex_dashboard.html', ward_table=ward_table, priority_queue=queue,
                            farmer_count=len(snapshots), answer=answer, last_question=last_question,
-                           allocations=allocations, visits=visits, officer_province=officer_province)
+                           allocations=allocations, visits=visits, officer_province=officer_province,
+                           outlook=season_outlook_context())
 
 
 @app.route('/admin')

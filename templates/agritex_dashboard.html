@@ -12,6 +12,12 @@
   🇿🇼 <strong>National View</strong> — all provinces (Ministry/Admin oversight).
 </div>
 {% endif %}
+{% if outlook %}
+<div class="p-2 px-3 mb-3" style="background:linear-gradient(135deg,#fff8ec,#f5f0e6);border-radius:8px;border-left:4px solid var(--gold);">
+  <strong style="color:var(--green);">{{ outlook.badge }}</strong>
+  <span style="font-size:0.85rem;color:#555;"> — {{ outlook.message }} Farmer rows below reflect submitted analyses, which may be exploratory (before an actual planting date is confirmed) rather than a currently growing crop.</span>
+</div>
+{% endif %}
 <p class="text-muted mb-4">{{ farmer_count }} farmers under monitoring across {{ ward_table|length }} wards.</p>
 
 <div class="row g-4 mb-4">

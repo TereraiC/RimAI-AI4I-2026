@@ -105,14 +105,20 @@ def build_explanation(analysis):
         })
 
     # ── Pest/disease analysis ────────────────────────────────────────────────
+    not_yet_planted = timing in ("wait", "risky")
     for alert in pest.get("active_alerts", []):
-        factors.append(f"{alert['name']} risk active — {alert['severity']} severity "
-                        f"(window: {alert['window']})")
+        if not_yet_planted:
+            factors.append(f"{alert['name']} pressure to expect once planted — {alert['severity']} severity "
+                            f"(typical window: {alert['window']}); current weather favours this pest, but no crop is in the ground yet")
+        else:
+            factors.append(f"{alert['name']} risk active — {alert['severity']} severity "
+                            f"(window: {alert['window']})")
         mitigations.append({
             "action":  alert["action"],
             "impact":  "Prevents 20–40% yield loss if untreated at high infestation levels",
             "source":  "FAO Fall Armyworm Management Guidelines",
-            "urgency": "Immediate" if alert["severity"] == "High" else "Monitor"
+            "urgency": ("Plan ahead" if not_yet_planted else
+                        ("Immediate" if alert["severity"] == "High" else "Monitor"))
         })
 
     if not factors:

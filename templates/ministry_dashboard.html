@@ -3,7 +3,14 @@
 {% block content %}
 <p class="section-eyebrow mb-1">Ministry Dashboard</p>
 <h2 style="font-family:'DM Serif Display',serif; color:var(--green);">National Food Intelligence Platform</h2>
-<p class="text-muted mb-4">Live rollup across all 10 provinces, powered by the same models farmers and AGRITEX officers see.</p>
+<p class="text-muted mb-2">Rollup across all 10 provinces, powered by the same models farmers and AGRITEX officers see.</p>
+
+{% if outlook %}
+<div class="p-3 mb-4" style="background:linear-gradient(135deg,#fff8ec,#f5f0e6);border-radius:10px;border-left:4px solid var(--gold);">
+  <strong style="color:var(--green);">{{ outlook.badge }}</strong>
+  <span style="font-size:0.88rem;color:#555;"> — {{ outlook.message }}</span>
+</div>
+{% endif %}
 
 <div class="row g-4 mb-4">
   <div class="col-lg-3">

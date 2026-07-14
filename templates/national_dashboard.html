@@ -3,7 +3,14 @@
 {% block content %}
 <p class="section-eyebrow mb-1">Ministry Level — Module 8</p>
 <h2 style="font-family:'DM Serif Display',serif; color:var(--green);">National Intelligence Dashboard</h2>
-<p class="text-muted mb-4">Zimbabwe's agricultural status at a glance. Click any province on the map for detailed intelligence.</p>
+<p class="text-muted mb-2">Zimbabwe's agricultural status at a glance. Click any province on the map for detailed intelligence.</p>
+
+{% if outlook %}
+<div class="p-3 mb-4" style="background:linear-gradient(135deg,#fff8ec,#f5f0e6);border-radius:10px;border-left:4px solid var(--gold);">
+  <strong style="color:var(--green);">{{ outlook.badge }}</strong>
+  <span style="font-size:0.88rem;color:#555;"> — {{ outlook.message }}</span>
+</div>
+{% endif %}
 
 <!-- National KPI strip -->
 <div class="row g-3 mb-4" id="kpiStrip">

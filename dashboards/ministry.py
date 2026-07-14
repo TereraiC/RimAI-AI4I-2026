@@ -39,15 +39,21 @@ def national_production(province_data):
     }
 
 
-def early_warning_feed(province_data):
+def early_warning_feed(province_data, in_season=True):
     """Auto-generated warnings for provinces at elevated risk or with a
-    meaningful rainfall shortfall versus their own province average."""
+    meaningful rainfall shortfall versus their own province average.
+    During the off-season (nothing planted yet), speaks in outlook
+    language rather than active-risk language — 'projected to face high
+    risk' rather than 'high crop failure risk', since no crop is
+    actually in the ground yet to be at risk."""
     warnings = []
+    high_verb = "High crop failure risk" if in_season else "Projected high risk if planted on schedule"
     for prov, p in province_data.items():
         if p["risk"] == "High":
-            warnings.append(f"🔴 {prov}: High crop failure risk — {p['recommendation']}")
+            warnings.append(f"🔴 {prov}: {high_verb} — {p['recommendation']}")
         elif p["risk"] == "Moderate" and p["vs_norm"] < -10:
-            warnings.append(f"🟠 {prov}: Yield tracking {abs(p['vs_norm'])}% below provincial norm.")
+            tail = "below provincial norm." if in_season else "below provincial norm (outlook, not yet planted)."
+            warnings.append(f"🟠 {prov}: Yield tracking {abs(p['vs_norm'])}% {tail}")
     warnings.sort()
     if not warnings:
         warnings = ["✅ No provinces currently show elevated risk."]
