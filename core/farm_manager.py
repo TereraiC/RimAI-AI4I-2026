@@ -20,10 +20,18 @@ def health_score(analysis):
     risk_label = analysis.get("risk_label", "Moderate")
     risk_score = {"Low": 92, "Moderate": 62, "High": 32}.get(risk_label, 55)
 
+    timing = analysis.get("timing", "unknown")
     alerts = analysis.get("pest_risk", {}).get("active_alerts", [])
-    penalty = sum(25 if a.get("severity") == "High" else 15 if a.get("severity") == "Moderate" else 8
-                  for a in alerts)
-    pest_score = max(0, 100 - penalty)
+    if timing == "plant_now":
+        penalty = sum(25 if a.get("severity") == "High" else 15 if a.get("severity") == "Moderate" else 8
+                      for a in alerts)
+        pest_score = max(0, 100 - penalty)
+    else:
+        # Nothing is confirmed planted yet (timing is "wait" or "risky") —
+        # pest pressure can't meaningfully apply to a crop that doesn't
+        # exist, so it shouldn't drag down the overall score before the
+        # farmer has even started this season.
+        pest_score = 100
 
     province = analysis.get("inputs_used", {}).get("province", "Harare")
     benchmark = PROVINCE_META.get(province, {}).get("avg_yield", 1.8)
@@ -50,8 +58,15 @@ def health_score(analysis):
 def daily_brief(analysis, latest_alert_message=None):
     """
     A short, dynamic "what matters today" sentence built from real signals:
-    the most recent proactive alert (if any), otherwise the current risk,
-    pest, and timing status.
+    the most recent proactive alert (if any), otherwise timing status
+    first (since that determines whether a crop is even in the ground),
+    then pest/risk status.
+
+    Timing is checked BEFORE pest alerts deliberately: pest alerts fire
+    from current weather alone, regardless of whether the farmer has
+    actually planted, so presenting them as "priority today: scout for X"
+    ahead of a "too early to plant" verdict would tell a farmer to scout
+    a crop that doesn't exist yet.
     """
     if latest_alert_message:
         return latest_alert_message
@@ -60,16 +75,25 @@ def daily_brief(analysis, latest_alert_message=None):
     risk_label = analysis.get("risk_label", "unknown")
     alerts = analysis.get("pest_risk", {}).get("active_alerts", [])
 
-    if alerts:
-        top = alerts[0]
-        return (f"Priority today: scout for {top['name']} ({top['severity']} risk) — "
-                f"{top['action'].split('.')[0]}.")
-    if timing == "plant_now":
-        return f"The planting window is open and season risk is {risk_label}. Good day to plant or continue planting."
     if timing == "wait":
+        if alerts:
+            top = alerts[0]
+            return (f"Too early to plant — hold off until sustained rain arrives. "
+                     f"No action needed today, but watch for {top['name']} once you do plant; "
+                     f"current weather already favours it.")
         return "Too early to plant — hold off until sustained rain arrives. No action needed today."
     if timing == "risky":
         return f"Late planting window — {risk_label} risk. Consider a short-season variety to reduce exposure."
+    if timing == "plant_now":
+        if alerts:
+            top = alerts[0]
+            return (f"Priority today: scout for {top['name']} ({top['severity']} risk) — "
+                     f"{top['action'].split('.')[0]}.")
+        return f"The planting window is open and season risk is {risk_label}. Good day to plant or continue planting."
+    if alerts:
+        top = alerts[0]
+        return (f"Priority today: scout for {top['name']} ({top['severity']} risk) — "
+                 f"{top['action'].split('.')[0]}.")
     return f"Current season risk: {risk_label}. No urgent actions flagged today."
 
 

@@ -69,7 +69,7 @@ def load_backtest(data_dir="data/processed"):
         metrics.setdefault("risk_accuracy", mm.get("risk_classifier_accuracy", 0.74))
         metrics.setdefault("risk_precision", mm.get("risk_classifier_accuracy", 0.74))
         metrics.setdefault("risk_recall", mm.get("risk_classifier_accuracy", 0.74))
-        metrics.setdefault("risk_f1", mm.get("risk_classifier_accuracy", 0.74))
+        metrics.setdefault("risk_f1", mm.get("risk_classifier_macro_f1", mm.get("risk_classifier_accuracy", 0.74)))
         # Results from the real backtest use actual_yield_t_ha/predicted_yield_t_ha;
         # normalize to the actual_yield/predicted_yield keys the template reads.
         for row in results:

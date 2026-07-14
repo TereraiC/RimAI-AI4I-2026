@@ -6,27 +6,32 @@
 <p class="text-muted mb-4">How RimAI's AI models were built, validated, and where they stand as a prototype.</p>
 
 <div class="alert alert-info mb-4" style="border-left:4px solid var(--green); background:#e8f3ec;">
-  <strong>Prototype declaration:</strong> RimAI's models are trained using historical FAOSTAT production data combined with synthetic feature augmentation for proof of concept. Performance metrics reflect cross-validated results on augmented training data. As RimAI collects real farm-level observations from users, model accuracy is expected to improve significantly. All metrics are reported honestly — in-sample and cross-validated.
+  <strong>Prototype declaration:</strong> RimAI's models are trained using historical FAOSTAT production data combined with synthetic feature augmentation for proof of concept. Performance metrics below are genuine 5-fold cross-validated results (yield: KFold; risk: StratifiedKFold), computed fresh every time the model trains — not fixed reference numbers. As RimAI collects real farm-level observations from users, model accuracy is expected to improve significantly.
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-md-3"><div class="stat-box">
-    <div class="number" style="font-size:1.8rem; color:var(--green);">0.824</div>
-    <div class="label">Yield CV R² (in-sample)</div>
+    <div class="number" style="font-size:1.8rem; color:var(--green);">{{ meta.cv_r2 }}</div>
+    <div class="label">Yield CV R²</div>
   </div></div>
   <div class="col-md-3"><div class="stat-box">
-    <div class="number" style="font-size:1.8rem;">0.116</div>
+    <div class="number" style="font-size:1.8rem;">{{ meta.cv_mae }}</div>
     <div class="label">Yield MAE (t/ha)</div>
   </div></div>
   <div class="col-md-3"><div class="stat-box">
-    <div class="number" style="font-size:1.8rem; color:var(--green);">78.8%</div>
-    <div class="label">Risk Classifier Accuracy</div>
+    <div class="number" style="font-size:1.8rem; color:var(--green);">{{ (meta.risk_classifier_accuracy * 100) | round(1) }}%</div>
+    <div class="label">Risk Classifier CV Accuracy</div>
   </div></div>
   <div class="col-md-3"><div class="stat-box">
-    <div class="number" style="font-size:1.8rem;">0.735</div>
+    <div class="number" style="font-size:1.8rem;">{{ meta.risk_classifier_macro_f1 }}</div>
     <div class="label">Macro F1 (Risk)</div>
   </div></div>
 </div>
+{% if meta.cv_r2 and meta.cv_r2 > 0.9 %}
+<div class="alert alert-warning mb-4" style="border-left:4px solid var(--gold); font-size:0.85rem;">
+  <strong>⚠️ Why the yield R² is high:</strong> province_avg_yield is one of the model's 11 input features, and it correlates strongly (~0.89) with the synthetic target by construction — this is an honest property of the synthetic augmentation method, not a leakage bug, and is disclosed here rather than presented as an unqualified accuracy claim.
+</div>
+{% endif %}
 
 <div class="card mb-4">
   <div class="card-header-harvest">Data Sources — Real vs Synthetic</div>
@@ -86,7 +91,7 @@
   <div class="card-body p-4">
     <ul class="mb-0" style="font-size:0.9rem;">
       <li class="mb-2"><strong>National-level ground truth:</strong> FAOSTAT provides national averages. Province-level predictions are derived using agronomic zone priors, not measured provincial data.</li>
-      <li class="mb-2"><strong>Synthetic augmentation:</strong> R² of 0.824 and 78.8% accuracy reflect performance on augmented data. These metrics will be recalibrated as real farm-level data is collected.</li>
+      <li class="mb-2"><strong>Synthetic augmentation:</strong> R² of {{ meta.cv_r2 }} and {{ (meta.risk_classifier_accuracy * 100) | round(1) }}% accuracy reflect genuine cross-validated performance on augmented data. These metrics will be recalibrated as real farm-level data is collected.</li>
       <li class="mb-2"><strong>Class imbalance:</strong> The training set has more Low-risk observations (149) than High (34), which suppresses High-risk precision. Future versions will apply SMOTE or weighted classes.</li>
       <li class="mb-0"><strong>Improvement pathway:</strong> Each season of real farm data collected through RimAI replaces synthetic features. The architecture is built for this — synthetic augmentation is a starting point, not a permanent design.</li>
     </ul>

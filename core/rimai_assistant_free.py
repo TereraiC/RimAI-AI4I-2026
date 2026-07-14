@@ -1,23 +1,85 @@
 
 INTENTS = [
-    ("plant_now",    ["should i plant","plant now","time to plant","when to plant","right time","plant maize"]),
-    ("fertilizer",   ["fertilizer","fertiliser","compound d","ammonium","npk","basal","top dress","topdress"]),
-    ("yield",        ["yield","harvest","how much maize","expect to harvest","tonnes","how much will"]),
-    ("low_yield",    ["why is my yield low","low yield","poor yield","yield down","bad harvest"]),
-    ("irrigation",   ["irrigat","when to water","dry spell","moisture","water stress"]),
-    ("weather",      ["weather","rainfall","rain","temperature","forecast","humidity"]),
-    ("pest_disease", ["pest","disease","armyworm","leaf spot","streak","insect","bug","yellow leaf","holes in","white powder"]),
-    ("rotation",     ["rotation","previous crop","last season","same crop","what to plant next","groundnut","soybean"]),
-    ("risk",         ["risk","danger","warning","alert","safe to plant","worried","how risky"]),
-    ("variety",      ["variety","seed","sc403","sc513","sc301","which seed","best seed","hybrid"]),
+    ("plant_now",    ["should i plant","plant now","time to plant","when to plant","right time",
+                       "plant maize","good time","start planting","ready to plant","can i plant",
+                       "when do i plant","planting date","planting time","begin planting","too early to plant",
+                       "too late to plant","when should i start"]),
+    ("fertilizer",   ["fertilizer","fertiliser","compound d","ammonium","npk","basal","top dress",
+                       "topdress","how much fertilizer","feed my crop","nutrients","nitrogen",
+                       "when to apply","how much compound","how much an"]),
+    ("yield",        ["yield","harvest","how much maize","expect to harvest","tonnes","how much will",
+                       "how many bags","production estimate","how much will i get","total harvest",
+                       "how much can i expect"]),
+    ("low_yield",    ["why is my yield low","low yield","poor yield","yield down","bad harvest",
+                       "yield dropped","less maize","yield decrease","why so low","disappointing harvest"]),
+    ("irrigation",   ["irrigat","when to water","dry spell","moisture","water stress","need water",
+                       "should i water","watering schedule","drought stress"]),
+    ("weather",      ["weather","rainfall","rain","temperature","forecast","humidity","how much rain",
+                       "is it going to rain","climate","hot","cold","how wet"]),
+    ("pest_disease", ["pest","disease","armyworm","leaf spot","streak","insect","bug","yellow leaf",
+                       "holes in","white powder","caterpillar","worm","damaged leaves","spots on leaves",
+                       "eating my crop","something wrong with my plant","sick plant","dying leaves"]),
+    ("rotation",     ["rotation","previous crop","last season","same crop","what to plant next",
+                       "groundnut","soybean","what should i grow next","crop after maize","next season crop",
+                       "continuous cropping","same field"]),
+    ("risk",         ["risk","danger","warning","alert","safe to plant","worried","how risky",
+                       "am i in trouble","how bad","should i worry","chances of failure","likely to fail"]),
+    ("variety",      ["variety","seed","sc403","sc513","sc301","which seed","best seed","hybrid",
+                       "what seed should i buy","recommend a seed","seed type"]),
 ]
 
-def match_intent(message):
+# Individual meaningful words used as a fallback pass when no exact phrase
+# matches — catches natural phrasing the fixed phrase list above misses
+# (e.g. "seeds" as a standalone word, or "bugs" instead of "bug").
+WORD_FALLBACK = {
+    "plant_now": ["planting", "plant"],
+    "fertilizer": ["fertiliser", "fertilizer", "manure"],
+    "yield": ["yield", "harvest", "bags", "tonnage"],
+    "irrigation": ["water", "irrigation"],
+    "weather": ["rain", "weather", "temperature"],
+    "pest_disease": ["pest", "pests", "bugs", "disease", "insects"],
+    "rotation": ["rotation", "rotate"],
+    "risk": ["risk", "risky", "danger"],
+    "variety": ["seed", "seeds", "variety"],
+}
+
+# Short follow-up phrases that only make sense in the context of whatever
+# was just discussed — these never carry their own intent, they always
+# refer back to the previous answer.
+FOLLOWUP_PHRASES = ["why", "why not", "how much", "how many", "what about",
+                     "and", "also", "what else", "more", "explain", "how come",
+                     "tell me more", "go on", "what does that mean"]
+
+
+def match_intents(message):
+    """Returns every intent whose keywords appear in the message, in the
+    order they're defined (not just the first match) — a message like
+    "when should I plant and what fertilizer should I use?" should answer
+    both parts, not just the first one matched."""
     msg = message.lower()
-    for intent, keywords in INTENTS:
-        if any(k in msg for k in keywords):
-            return intent
-    return "general"
+    matched = [intent for intent, keywords in INTENTS if any(k in msg for k in keywords)]
+    if matched:
+        return matched
+
+    # Fuzzy fallback: no exact phrase matched, try individual words
+    words = set(msg.replace("?", "").replace(",", "").split())
+    for intent, fallback_words in WORD_FALLBACK.items():
+        if any(w in words for w in fallback_words):
+            return [intent]
+
+    return []
+
+
+def is_followup(message):
+    msg = message.lower().strip().rstrip("?")
+    return len(msg.split()) <= 4 and any(msg == p or msg.startswith(p + " ") for p in FOLLOWUP_PHRASES)
+
+
+def match_intent(message):
+    """Backwards-compatible single-intent accessor."""
+    matched = match_intents(message)
+    return matched[0] if matched else "general"
+
 
 def build_greeting(username, farm_data, chat_history_count):
     province    = farm_data.get("province", "")
@@ -68,7 +130,7 @@ def build_greeting(username, farm_data, chat_history_count):
     parts.append("What would you like to know?")
     return " ".join(parts)
 
-def build_response(intent, farm_data, username=""):
+def _build_single_response(intent, farm_data, username=""):
     province    = farm_data.get("province", "your province")
     soil        = farm_data.get("soil_type", "your soil")
     prev_crop   = farm_data.get("previous_crop", "unknown")
@@ -181,13 +243,46 @@ def build_response(intent, farm_data, username=""):
 
     else:
         conf = f" ({risk_conf}% confidence)" if risk_conf else ""
+        specifics = []
+        if timing == "wait":
+            specifics.append("it's too early to plant right now")
+        elif timing == "plant_now":
+            specifics.append("the planting window is currently open")
+        if pest_alerts:
+            specifics.append(f"there's an active {pest_alerts[0]['name']} alert")
+        specific_str = (" Right now, " + " and ".join(specifics) + ".") if specifics else ""
         return (f"I am your RimAI Agronomist{', ' + name if name else ''}. "
                 f"I know your {size}ha farm in {province} — "
-                f"current season: {risk_label} risk{conf}. "
+                f"current season: {risk_label} risk{conf}.{specific_str} "
                 f"Ask me about planting, fertilizer, yield, pests, "
                 f"irrigation, weather, rotation, risk, or varieties.")
 
 
-def get_chat_response(message, farm_data, username=""):
-    intent = match_intent(message)
-    return {"success": True, "reply": build_response(intent, farm_data, username), "intent": intent}
+def get_chat_response(message, farm_data, username="", last_intent=None):
+    """
+    Multi-intent, follow-up-aware chat response.
+
+    - A message can match more than one topic ("when should I plant and
+      what fertilizer should I use?") — every matched intent gets
+      answered, not just the first one found.
+    - A short message with no topic keywords of its own ("why?", "how
+      much?", "what about pests?") is treated as a follow-up to whatever
+      was just discussed, using last_intent (the previous turn's intent,
+      threaded in by the caller) rather than falling back to a generic menu.
+    """
+    matched = match_intents(message)
+
+    if not matched and last_intent and is_followup(message):
+        matched = [last_intent]
+
+    if not matched:
+        reply = _build_single_response("general", farm_data, username)
+        return {"success": True, "reply": reply, "intent": "general"}
+
+    if len(matched) == 1:
+        reply = _build_single_response(matched[0], farm_data, username)
+    else:
+        parts = [_build_single_response(i, farm_data, username) for i in matched]
+        reply = "\n\n".join(parts)
+
+    return {"success": True, "reply": reply, "intent": matched[0]}

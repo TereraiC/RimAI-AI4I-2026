@@ -11,6 +11,8 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import KFold, StratifiedKFold, cross_val_predict
+from sklearn.metrics import r2_score, mean_absolute_error, accuracy_score, f1_score
 import xgboost as xgb
 
 MODEL_DIR  = "models"
@@ -79,6 +81,30 @@ def train_yield_model():
     le     = LabelEncoder(); le.fit(['Low','Moderate','High'])
     y_risk = le.transform(df['risk_class'].values)
 
+    # ── Genuine 5-fold cross-validation (not hardcoded reference numbers) ──
+    # Every prediction used for these metrics comes from a fold that did NOT
+    # see that row during training — an honest, held-out estimate of how
+    # the model performs on data it wasn't fit on, computed fresh every
+    # time this function runs (e.g. every app startup), not a fixed
+    # constant baked into the code.
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    yield_cv_preds = cross_val_predict(Ridge(alpha=1.0), X, y_yield, cv=kf)
+    cv_r2  = round(float(r2_score(y_yield, yield_cv_preds)), 3)
+    cv_mae = round(float(mean_absolute_error(y_yield, yield_cv_preds)), 3)
+
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    risk_cv_preds = cross_val_predict(
+        xgb.XGBClassifier(n_estimators=200, learning_rate=0.05, max_depth=4,
+                           random_state=42, verbosity=0, eval_metric='mlogloss'),
+        X, y_risk, cv=skf,
+    )
+    cv_accuracy = round(float(accuracy_score(y_risk, risk_cv_preds)), 3)
+    cv_macro_f1 = round(float(f1_score(y_risk, risk_cv_preds, average='macro')), 3)
+
+    # ── Final production models: fit on the full dataset ──
+    # Standard practice — cross-validation above is purely for honest
+    # performance reporting; the deployed model itself uses every
+    # available row rather than holding 20% back for no operational benefit.
     reg = Ridge(alpha=1.0); reg.fit(X, y_yield)
     norm_reg = Ridge(alpha=1.0); norm_reg.fit(X, y_norm)
     clf = xgb.XGBClassifier(n_estimators=200,learning_rate=0.05,max_depth=4,
@@ -92,10 +118,12 @@ def train_yield_model():
         with open(path,'wb') as f: pickle.dump(obj,f)
 
     meta = {"mode":"augmented_data","n_rows":len(df),"n_features":len(FEATURE_COLS),
-            "features":FEATURE_COLS,"best_regressor":"Ridge (CV R²=0.824)","cv_r2":0.824,
-            "cv_mae":0.116,"risk_classifier":"XGBoost (accuracy=0.74)","risk_classifier_accuracy":0.74,
+            "features":FEATURE_COLS,"best_regressor":f"Ridge (CV R²={cv_r2})","cv_r2":cv_r2,
+            "cv_mae":cv_mae,"risk_classifier":f"XGBoost (CV accuracy={cv_accuracy})",
+            "risk_classifier_accuracy":cv_accuracy,"risk_classifier_macro_f1":cv_macro_f1,
+            "cv_method":"5-fold (yield: KFold; risk: StratifiedKFold), computed fresh at training time — not a fixed reference value",
             "source":"FAOSTAT national yield (real) + agronomically-calibrated synthetic features",
-            "note":"National yield history from FAOSTAT is real. Feature augmentation (ENSO, soil moisture, NDVI proxy, fertilizer rate, planting date, previous yield) uses agronomically-calibrated synthetic values for variables not available at national scale — transparently disclosed on Model Insights page.",
+            "note":"National yield history from FAOSTAT is real. Feature augmentation (ENSO, soil moisture, NDVI proxy, fertilizer rate, planting date, previous yield) uses agronomically-calibrated synthetic values for variables not available at national scale — transparently disclosed on Model Insights page. The yield model's high CV R\u00b2 is partly explained by province_avg_yield being one of its 11 input features, which correlates strongly (~0.89) with the synthetic target by construction \u2014 disclosed here rather than presented as an unqualified accuracy claim.",
             "years_covered":"2000-2024"}
     with open(f"{MODEL_DIR}/model_meta.pkl",'wb') as f: pickle.dump(meta,f)
     print(f"RimAI models trained — CV R²: {meta['cv_r2']}, Risk accuracy: {meta['risk_classifier_accuracy']}")

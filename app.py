@@ -541,7 +541,10 @@ def api_chat():
         reply = build_virtual_agronomist_response(message, analysis_full)
         result = {"success": True, "reply": reply}
     else:
-        result = get_chat_response(message, farm_data, username=session.get('username',''))
+        last_intent = session.get('last_chat_intent')
+        result = get_chat_response(message, farm_data, username=session.get('username',''), last_intent=last_intent)
+        if result.get('intent'):
+            session['last_chat_intent'] = result['intent']
     with get_db() as db:
         db.execute('INSERT INTO chat_history (user_id, role, content) VALUES (?,?,?)',
                    (session['user_id'], 'user', message))
