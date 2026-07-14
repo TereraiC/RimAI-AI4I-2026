@@ -108,21 +108,39 @@ def farm_memory(current, previous):
 
 def action_calendar(analysis):
     """
-    A simple forward-looking calendar derived from the farmer's planting
-    date: fertilizer top-dress, key pest scouting windows, tasseling/grain
-    fill irrigation windows, and an estimated harvest date.
+    A forward-looking calendar: fertilizer top-dress, key pest scouting
+    windows, tasseling/grain fill irrigation windows, and an estimated
+    harvest date.
+
+    Anchored on the farmer's own planting date ONLY if that date actually
+    falls within the recommended planting window (timing == 'plant_now').
+    If the farmer's date was too early or too late, building a calendar
+    from a date the system has already flagged as wrong would produce a
+    nonsensical schedule (e.g. a 'Tasseling' window in the middle of the
+    dry season) — so the calendar instead anchors on the suggested
+    recommended date, clearly labelled as such.
     """
     inputs = analysis.get("inputs_used", {})
-    planting_date_str = inputs.get("planting_date")
-    events = []
-    if not planting_date_str:
-        return events
-    try:
-        planting_date = datetime.datetime.strptime(planting_date_str[:10], "%Y-%m-%d").date()
-    except ValueError:
-        return events
+    timing = analysis.get("timing")
+    chosen_date_str = inputs.get("planting_date")
+    suggested_date_str = analysis.get("suggested_planting_date_iso")
 
-    events.append({"date": planting_date, "label": "Planting", "note": "Plant seed at recommended spacing."})
+    using_suggested = False
+    anchor_str = chosen_date_str
+    if timing != "plant_now" and suggested_date_str:
+        anchor_str = suggested_date_str
+        using_suggested = True
+
+    events = []
+    if not anchor_str:
+        return {"events": events, "using_suggested_date": False, "chosen_date_was_rejected": False}
+    try:
+        planting_date = datetime.datetime.strptime(anchor_str[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return {"events": events, "using_suggested_date": False, "chosen_date_was_rejected": False}
+
+    events.append({"date": planting_date, "label": "Planting",
+                    "note": "Plant seed at recommended spacing."})
     events.append({"date": planting_date + datetime.timedelta(days=21),
                     "label": "Scout for Fall Armyworm", "note": "Check whorls for window-pane damage weekly from here."})
     events.append({"date": planting_date + datetime.timedelta(days=30),
@@ -139,7 +157,12 @@ def action_calendar(analysis):
         e["date_str"] = e["date"].strftime("%d %b %Y")
         e["is_past"] = e["date"] < today
         e["days_away"] = (e["date"] - today).days
-    return events
+
+    return {
+        "events": events,
+        "using_suggested_date": using_suggested,
+        "chosen_date_was_rejected": using_suggested and bool(chosen_date_str),
+    }
 
 
 def run_scenario(base_analysis, rainfall_pct_change=0, temp_delta_c=0, fertilizer_on=True):

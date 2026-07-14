@@ -73,11 +73,17 @@
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header-harvest">📅 Action Calendar</div>
+      {% if calendar.chosen_date_was_rejected %}
+      <div class="p-2 px-3" style="background:#fff8ec;border-left:4px solid var(--gold);font-size:0.82rem;">
+        ⚠️ The planting date you entered was outside the recommended window, so this calendar is
+        anchored on the <strong>suggested planting date</strong> instead.
+      </div>
+      {% endif %}
       <div class="card-body p-0">
         <table class="table table-hover mb-0" style="font-size:0.87rem;">
           <thead><tr><th>Date</th><th>Action</th></tr></thead>
           <tbody>
-            {% for e in calendar %}
+            {% for e in calendar.events %}
             <tr style="{{ 'opacity:0.45;' if e.is_past else '' }}">
               <td style="white-space:nowrap;">{{ e.date_str }}{% if not e.is_past %}<br><small class="text-muted">in {{ e.days_away }}d</small>{% endif %}</td>
               <td><strong>{{ e.label }}</strong><br><small class="text-muted">{{ e.note }}</small></td>
@@ -86,6 +92,13 @@
           </tbody>
         </table>
       </div>
+      {% if calendar.events %}
+      <div class="p-2 px-3" style="font-size:0.78rem;color:#777;border-top:1px solid #eee;">
+        📌 These dates are estimates based on a standard variety cycle and current seasonal
+        assumptions — they may shift if actual rainfall differs from the forecast this
+        recommendation was based on.
+      </div>
+      {% endif %}
     </div>
   </div>
 

@@ -164,6 +164,7 @@ def get_full_farm_analysis(inputs):
         "timing": timing,
         "timing_msg": timing_msg,
         "suggested_planting_date": suggested_date_str,
+        "suggested_planting_date_iso": suggested_date.strftime("%Y-%m-%d"),
         "fertilizer": {
             "compound_d_kg": cpd_kg,
             "an_kg": an_kg,
