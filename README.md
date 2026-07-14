@@ -1,5 +1,7 @@
 # RimAI — Zimbabwe Agricultural Intelligence Platform
 
+[![Tests](https://github.com/TereraiC/RimAI-AI4I-2026/actions/workflows/tests.yml/badge.svg)](https://github.com/TereraiC/RimAI-AI4I-2026/actions/workflows/tests.yml)
+
 An AI-powered agricultural intelligence platform combining machine learning yield/risk
 prediction, explainable AI, weather intelligence, and institutional decision support for
 Zimbabwe's farmers, AGRITEX extension officers, and Ministry of Agriculture.
