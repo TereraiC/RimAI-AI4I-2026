@@ -11,7 +11,7 @@
       <div class="card-header-harvest">🗺️ Ward Risk Overview</div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0" style="font-size:0.87rem;">
-          <thead><tr><th>District</th><th>Province</th><th>Farmers</th><th>Risk mix</th><th>Pest alerts</th></tr></thead>
+          <thead><tr><th>District</th><th>Province</th><th>Farmers</th><th>Risk mix</th><th>Primary Cause</th><th>Pest alerts</th></tr></thead>
           <tbody>
             {% for w in ward_table %}
             <tr>
@@ -23,6 +23,7 @@
                 {% if w.moderate %}<span class="badge bg-warning text-dark">{{ w.moderate }} Mod</span>{% endif %}
                 {% if w.low %}<span class="badge bg-success">{{ w.low }} Low</span>{% endif %}
               </td>
+              <td><span class="text-muted" style="font-size:0.82rem;">{{ w.dominant_factor }}</span></td>
               <td>{{ w.pest_alerts }}</td>
             </tr>
             {% endfor %}
@@ -57,7 +58,7 @@
       <div class="card-header-harvest">🚩 Farmer Priority Queue</div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0" style="font-size:0.87rem;">
-          <thead><tr><th>#</th><th>Farmer</th><th>Ward</th><th>Risk</th><th>Pest</th><th>Yield</th></tr></thead>
+          <thead><tr><th>#</th><th>Farmer</th><th>Ward</th><th>Risk</th><th>Primary Factor</th><th>Pest</th><th>Yield</th></tr></thead>
           <tbody>
             {% for f in priority_queue %}
             <tr>
@@ -69,6 +70,7 @@
                 {% elif f.risk_label == 'Moderate' %}<span class="badge bg-warning text-dark">Moderate</span>
                 {% else %}<span class="badge bg-success">Low</span>{% endif %}
               </td>
+              <td><span class="text-muted" style="font-size:0.8rem;">{{ f.top_factor }}</span></td>
               <td>{{ f.pest_alerts|length }}</td>
               <td>{{ f.yield_t_ha }} t/ha</td>
             </tr>

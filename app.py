@@ -196,8 +196,69 @@ def init_db():
         db.commit()
 
 
+def seed_demo_farmer_data():
+    """Populate a spread of demo farmer accounts with real crop_advisor
+    analyses (via the same get_full_farm_analysis() path a real farmer
+    request uses) so the AGRITEX ward table and priority queue have
+    something to show on a genuinely fresh install, rather than being
+    empty until real farmers start using the platform. Only runs once —
+    skips if any crop_advisor predictions already exist."""
+    with get_db() as db:
+        existing = db.execute(
+            "SELECT COUNT(*) c FROM predictions WHERE prediction_type='crop_advisor'"
+        ).fetchone()
+        if existing["c"] > 0:
+            return
+
+        demo_farmers = [
+            ("farmer_chinhoyi", "Tendai Moyo", "Mashonaland West", "Chinhoyi", "Maize", 3),
+            ("farmer_karoi", "Blessing Sibanda", "Mashonaland West", "Karoi", "Fallow/None", 1),
+            ("farmer_gwanda", "Nomsa Ndlovu", "Matabeleland South", "Gwanda", "Maize", 2),
+            ("farmer_beitbridge", "Farai Chikafu", "Matabeleland South", "Beitbridge", "Maize", 4),
+            ("farmer_chivi", "Rutendo Mhlanga", "Masvingo", "Chivi", "Maize", 2),
+            ("farmer_masvingo_c", "Tapiwa Gumbo", "Masvingo", "Masvingo Central", "Groundnuts", 1),
+            ("farmer_mutare", "Kudakwashe Marufu", "Manicaland", "Mutare", "Fallow/None", 1),
+            ("farmer_chimanimani", "Chiedza Zvobgo", "Manicaland", "Chimanimani", "Maize", 1),
+            ("farmer_bindura", "Simba Chirwa", "Mashonaland Central", "Bindura", "Soybeans", 1),
+            ("farmer_marondera", "Vimbai Mutasa", "Mashonaland East", "Marondera", "Maize", 2),
+            ("farmer_gweru", "Tatenda Moyo", "Midlands", "Gweru", "Maize", 4),
+            ("farmer_hwange", "Precious Dube", "Matabeleland North", "Hwange", "Maize", 3),
+        ]
+
+        for username, full_name, province, district, previous_crop, years_continuous in demo_farmers:
+            existing_user = db.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+            if existing_user:
+                user_id = existing_user["id"]
+            else:
+                db.execute(
+                    "INSERT INTO users (username,password,role,full_name) VALUES (?,?,?,?)",
+                    (username, generate_password_hash("farmerdemo2026"), "farmer", full_name),
+                )
+                user_id = db.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()["id"]
+
+            try:
+                result = get_full_farm_analysis({
+                    "province": province,
+                    "district": district,
+                    "soil_type": "Clay-Loam",
+                    "previous_crop": previous_crop,
+                    "years_continuous": years_continuous,
+                    "farm_size": 2,
+                })
+                db.execute(
+                    "INSERT INTO predictions (user_id,prediction_type,inputs,result) VALUES (?,?,?,?)",
+                    (user_id, "crop_advisor", json.dumps({"province": province, "district": district}),
+                     json.dumps(result)),
+                )
+            except Exception as e:
+                print(f"  ! Could not seed demo analysis for {username}: {e}")
+        db.commit()
+        print("  \u2713 Seeded demo farmer data across 12 districts for AGRITEX ward view")
+
+
 init_db()
 train_yield_model()
+seed_demo_farmer_data()
 ensure_alert_tables(DB)
 start_background_watcher(DB)
 
@@ -491,6 +552,44 @@ NATIONAL_INTERVENTIONS = {
     "High":     "High crop failure risk. Deploy emergency AGRITEX support, assess irrigation availability, and pre-position input relief.",
 }
 
+
+def national_factor_summary(rainfall, avg_rain, temp, risk_label):
+    """Identify the specific driver behind a province's risk level (rainfall
+    deficit, heat stress, or neither), rather than showing a generic
+    recommendation keyed only on High/Moderate/Low. Uses the same rainfall
+    percentage thresholds as core.explanation_engine.build_explanation so
+    the reasoning is consistent between an individual farmer's report and
+    the national map."""
+    rain_pct = (rainfall - avg_rain) / avg_rain * 100 if avg_rain else 0
+
+    if rain_pct < -20:
+        factor = "Rainfall deficit"
+        detail = (f"Rainfall is {abs(round(rain_pct,1))}% below the province norm "
+                   f"({round(rainfall)}mm vs {round(avg_rain)}mm historical average) — the dominant driver of this risk level.")
+        rec = ("Deploy emergency AGRITEX support and assess irrigation availability; "
+               "supplemental irrigation at tasselling and grain fill recovers an estimated +0.4-0.6 t/ha.")
+    elif rain_pct < -10:
+        factor = "Rainfall deficit"
+        detail = f"Rainfall is {abs(round(rain_pct,1))}% below average — moderate moisture deficit is the main contributing factor."
+        rec = "Recommend AGRITEX field visits to verify soil moisture and advise supplemental irrigation if wilting is observed."
+    elif temp > 26:
+        factor = "Heat stress"
+        detail = f"Average temperature ({round(temp,1)}\u00b0C) is elevated, raising pollen sterility risk at tasselling."
+        rec = "Advise earlier planting next season to shift tasselling away from peak heat; monitor irrigation to offset heat stress this season."
+    elif risk_label != "Low":
+        factor = "Structural agro-zone risk"
+        detail = ("Rainfall and temperature are near the province's own historical average this season, "
+                   "but this province's growing conditions (soil, agro-ecological zone) place its baseline "
+                   "yield below the national average — the risk reflects structural conditions, not this "
+                   "season's weather specifically.")
+        rec = NATIONAL_INTERVENTIONS[risk_label]
+    else:
+        factor = "Favourable conditions"
+        detail = "Rainfall and temperature are within normal range for this province — no single dominant risk factor identified."
+        rec = NATIONAL_INTERVENTIONS[risk_label]
+
+    return {"factor": factor, "detail": detail, "recommendation": rec}
+
 def compute_national_snapshot():
     from core.harvest_model import predict_yield, PROVINCE_META
     from data_pipeline.weather_service import get_weather_for_farm
@@ -504,11 +603,14 @@ def compute_national_snapshot():
             'planting_month': 11, 'farm_size_ha': 1,
         })
         vs_norm = round((result['yield_t_ha'] - meta['avg_yield']) / meta['avg_yield'] * 100, 1)
+        factor_info = national_factor_summary(rainfall, meta['avg_rain'], weather.get('avg_temp_c', 22), result['risk_label'])
         province_data[prov] = {
             "yield": result['yield_t_ha'], "risk": result['risk_label'],
             "rainfall": round(rainfall), "zone": meta['zone'], "norm": meta['avg_yield'],
             "vs_norm": vs_norm, "area_ha": NATIONAL_AREA_HA.get(prov, 50000),
-            "recommendation": NATIONAL_INTERVENTIONS[result['risk_label']],
+            "recommendation": factor_info["recommendation"],
+            "primary_factor": factor_info["factor"],
+            "factor_detail": factor_info["detail"],
         }
     return province_data
 

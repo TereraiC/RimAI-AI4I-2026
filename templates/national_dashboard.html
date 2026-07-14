@@ -215,6 +215,10 @@ document.querySelectorAll('.province-poly').forEach(el => {
           <div class="label">Agro Zone</div>
         </div></div>
       </div>
+      <div class="p-3 mb-2" style="background:#fff8ec;border-radius:8px;border-left:4px solid var(--gold);font-size:0.9rem;">
+        <strong>Primary Risk Factor:</strong> ${d.primary_factor}<br>
+        <span style="color:#666;">${d.factor_detail}</span>
+      </div>
       <div class="p-3 mb-2" style="background:var(--mist);border-radius:8px;font-size:0.9rem;">
         <strong>vs Province Norm:</strong>
         <span style="color:${d.vs_norm>=0?'var(--green)':'var(--red)'};">

@@ -103,8 +103,7 @@ def get_full_farm_analysis(inputs):
     risk = min(risk, 10)
     if risk <= 2: risk_label = "Low"
     elif risk <= 5: risk_label = "Moderate"
-    elif risk <= 7: risk_label = "High"
-    else: risk_label = "Very High"
+    else: risk_label = "High"
 
     # ── 7. ML risk confidence from yield model ──
     risk_confidence = None
@@ -118,9 +117,15 @@ def get_full_farm_analysis(inputs):
             "planting_month": month,
             "farm_size_ha": farm_size,
         })
-        risk_label      = _yresult.get("risk_label", risk_label)
         risk_confidence = _yresult.get("risk_confidence")
         yield_t_ha      = _yresult.get("yield_t_ha")
+        # Deliberately NOT overwriting risk_label here: the score above
+        # already accounts for planting timing, agro-ecological zone,
+        # rainfall, AND rotation/pest pressure (rotation_score bonus).
+        # The yield model's risk_label is a simpler yield-ratio-only
+        # classification, correct for the national map view but too
+        # coarse for farm-level advice — it would silently discard real
+        # rotation/pest risk that this richer score already captures.
     except Exception:
         pass
 

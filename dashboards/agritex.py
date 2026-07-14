@@ -35,6 +35,7 @@ def latest_farmer_snapshots(db_path):
             continue
         inputs = result.get("inputs_used", {})
         pest_alerts = result.get("pest_risk", {}).get("active_alerts", [])
+        factors = result.get("explanation", {}).get("factors", [])
         snapshots.append({
             "user_id": r["user_id"],
             "name": r["full_name"] or r["username"].capitalize(),
@@ -46,19 +47,39 @@ def latest_farmer_snapshots(db_path):
             "pest_alerts": pest_alerts,
             "rotation_verdict": result.get("rotation", {}).get("verdict", ""),
             "timing": result.get("timing"),
+            "factors": factors,
+            "top_factor": factors[0] if factors else "No dominant risk factor identified",
             "last_updated": r["created_at"],
         })
     return snapshots
 
 
+def _factor_category(factor_text):
+    """Bucket a free-text explanation factor into a short, consistent label
+    for ward-level aggregation (e.g. many different rainfall sentences all
+    roll up to 'Rainfall deficit')."""
+    t = factor_text.lower()
+    if "rainfall" in t or "moisture" in t:
+        return "Rainfall deficit"
+    if "temperature" in t or "heat" in t or "pollen" in t:
+        return "Heat stress"
+    if any(k in t for k in ("armyworm", "aphid", "stalk borer", "risk active", "pest")):
+        return "Pest pressure"
+    if "nitrogen" in t or "continuous" in t or "rotation" in t:
+        return "Rotation/soil depletion"
+    if "planting" in t or "season" in t:
+        return "Late planting"
+    return "Other"
+
+
 def ward_risk_table(snapshots):
-    """District-level rollup: farmer count and risk mix per district."""
+    """District-level rollup: farmer count, risk mix, and dominant cause per district."""
     table = {}
     for s in snapshots:
         key = (s["province"], s["district"])
         row = table.setdefault(key, {"province": s["province"], "district": s["district"],
                                       "farmers": 0, "high": 0, "moderate": 0, "low": 0,
-                                      "pest_alerts": 0})
+                                      "pest_alerts": 0, "factor_counts": {}})
         row["farmers"] += 1
         row["pest_alerts"] += len(s["pest_alerts"])
         if s["risk_label"] == "High":
@@ -67,11 +88,19 @@ def ward_risk_table(snapshots):
             row["moderate"] += 1
         elif s["risk_label"] == "Low":
             row["low"] += 1
+        if s.get("factors") and s["factors"][0] != "Conditions are broadly favourable — no single dominant risk factor identified":
+            cat = _factor_category(s["factors"][0])
+            row["factor_counts"][cat] = row["factor_counts"].get(cat, 0) + 1
 
     rows = list(table.values())
     for row in rows:
         row["dominant_risk"] = ("High" if row["high"] >= max(row["moderate"], row["low"])
                                  else "Moderate" if row["moderate"] >= row["low"] else "Low")
+        if row["factor_counts"]:
+            row["dominant_factor"] = max(row["factor_counts"], key=row["factor_counts"].get)
+        else:
+            row["dominant_factor"] = "\u2014"
+        del row["factor_counts"]
     rows.sort(key=lambda r: (RISK_ORDER.get(r["dominant_risk"], 3), -r["farmers"]))
     return rows
 
