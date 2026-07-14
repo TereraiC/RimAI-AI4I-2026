@@ -5,29 +5,35 @@
   <div class="col-lg-8">
     <p class="section-eyebrow mt-3 mb-2">About This Platform</p>
     <h2 style="font-family:'DM Serif Display',serif; color:var(--green); font-size:2.5rem;">RimAI</h2>
-    <p class="lead">A prototype national agricultural intelligence platform for Zimbabwe, built for the AI4I Challenge 2026. "Rima" means "to plant/cultivate" in Shona.</p>
+    <p class="lead">An AI-powered agricultural intelligence platform for Zimbabwe, built for the AI4I Challenge 2026 Development Track. "Rima" means "to plant/cultivate" in Shona.</p>
     <hr>
     <h5 style="color:var(--green);">Vision</h5>
-    <p>To become Zimbabwe's centralised source of AI-powered agricultural intelligence — helping every farmer and officer make better planting decisions, predict yields accurately, manage pest risk, and avoid the crop-rotation mistakes that quietly erode soil fertility year after year.</p>
+    <p>RimAI is the intelligence layer connecting Zimbabwe's farmers, AGRITEX extension officers, and policymakers through predictive, explainable agricultural AI — not a single-purpose farming app, but a shared foundation for data-driven agricultural decision-making at every level, from an individual farm to national food-security planning.</p>
     <h5 style="color:var(--green);">What the MVP Does</h5>
     <ul>
-      <li><strong>Crop Advisor:</strong> Farmer enters location, soil type, and rotation history. RimAI fetches live satellite weather (NASA POWER) automatically and returns fertilizer, timing, and irrigation guidance.</li>
-      <li><strong>Yield Prediction:</strong> Random Forest regression model predicting maize yield (t/ha), now factoring rotation history into the forecast.</li>
-      <li><strong>Dashboard:</strong> Province-level historical yield and rainfall visualisation with risk classification.</li>
-      <li><strong>Farm Assistant:</strong> A Claude-powered chatbot that already knows the farmer's latest analysis. Farmers can type questions or upload photos of pest/disease symptoms for identification.</li>
+      <li><strong>Farmer Dashboard:</strong> Farm Health Score, AI Daily Brief, yield and risk prediction, an economic impact simulator, and a Virtual Agronomist that answers questions using the farmer's own analysis.</li>
+      <li><strong>AGRITEX Dashboard:</strong> A farmer priority queue and ward-level risk table ranked by urgency, so one officer can see which farms need a visit most, with the specific cause (rainfall deficit, pest pressure, rotation depletion) attached to each — not just a bare risk badge.</li>
+      <li><strong>Ministry Dashboard:</strong> A national food security index and an interactive Zimbabwe province map (built from real administrative boundary data) with province-level risk, yield, and the primary driver behind each province's risk level.</li>
+      <li><strong>Admin Dashboard:</strong> Live model performance metrics, data pipeline health, and a Data Provenance & Transparency page disclosing exactly which datasets are real, synthetic, or hybrid.</li>
+      <li><strong>Explainable predictions, everywhere:</strong> Every risk score is paired with cited, factor-level reasoning (rainfall anomaly, crop rotation history, pest pressure) rather than a bare number.</li>
     </ul>
     <h5 style="color:var(--green);">Technology Stack</h5>
     <table class="table table-bordered" style="font-size:0.9rem;">
       <tr><td>Frontend</td><td>HTML, Bootstrap 5, JavaScript, Plotly</td></tr>
       <tr><td>Backend</td><td>Python Flask</td></tr>
-      <tr><td>AI / ML</td><td>Scikit-learn (Random Forest), Claude (vision + chat)</td></tr>
-      <tr><td>Weather Data</td><td>NASA POWER API (free, satellite-derived, near real-time)</td></tr>
-      <tr><td>Database</td><td>SQLite (MVP) → PostgreSQL (scale)</td></tr>
-      <tr><td>Auth</td><td>Flask sessions + Werkzeug password hashing</td></tr>
+      <tr><td>Yield Prediction</td><td>Ridge regression (walk-forward CV R\u00b2 = 0.824)</td></tr>
+      <tr><td>Risk Classification</td><td>XGBoost (CV accuracy 78.8%, macro F1 0.735)</td></tr>
+      <tr><td>Virtual Agronomist</td><td>Rule-grounded explanation engine — deliberately not a hosted LLM, for offline reliability, zero marginal cost, and no hallucination risk</td></tr>
+      <tr><td>Weather Data</td><td>NASA POWER API (real, satellite-derived), with a disclosed fallback dataset if unreachable</td></tr>
+      <tr><td>Yield History</td><td>FAOSTAT (real, 2000\u20132024), with a disclosed fallback if unreachable</td></tr>
+      <tr><td>Database</td><td>SQLite (MVP) \u2192 PostgreSQL (production)</td></tr>
+      <tr><td>Auth</td><td>Flask sessions + Werkzeug password hashing, role-based access control</td></tr>
     </table>
     <h5 style="color:var(--green);">Roadmap</h5>
-    <p>Custom-trained image classifier for pest/disease identification (replacing general-purpose vision with a model trained on Zimbabwe-specific crop photos), SMS alerts via EcoNet/NetOne, offline-capable PWA, multi-language support (Shona/Ndebele), and migration to PostgreSQL + cloud deployment.</p>
-    <a href="/" class="btn btn-harvest mt-2">← Back to Home</a>
+    <p><strong>Phase 2:</strong> live WhatsApp alerting, an LLM layer added alongside (not replacing) the deterministic explanation engine for free-text queries, image-based crop/pest diagnosis, and an AGRITEX pilot in 1\u20132 districts.</p>
+    <p><strong>Phase 3:</strong> government data-sharing integration, satellite-derived vegetation indices replacing the current NDVI proxy, optional IoT soil/weather sensors, and continuous model retraining as real data volume grows.</p>
+    <p>Every synthetic dataset used in this MVP is disclosed on the <a href="/admin/data-provenance">Data Provenance &amp; Transparency</a> page and is designed to be automatically displaced by real data as it becomes available, without a dashboard rebuild.</p>
+    <a href="/" class="btn btn-harvest mt-2">\u2190 Back to Home</a>
   </div>
 </div>
 {% endblock %}

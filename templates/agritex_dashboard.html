@@ -3,6 +3,15 @@
 {% block content %}
 <p class="section-eyebrow mb-1">AGRITEX Officer Dashboard</p>
 <h2 style="font-family:'DM Serif Display',serif; color:var(--green);">AI Extension Command Centre</h2>
+{% if officer_province %}
+<div class="p-2 px-3 mb-3" style="background:#fff8ec;border-radius:8px;border-left:4px solid var(--gold);display:inline-block;">
+  📍 <strong>Your Province:</strong> {{ officer_province }} — showing farmers in your assigned region only.
+</div>
+{% else %}
+<div class="p-2 px-3 mb-3" style="background:var(--mist);border-radius:8px;border-left:4px solid var(--green);display:inline-block;">
+  🇿🇼 <strong>National View</strong> — all provinces (Ministry/Admin oversight).
+</div>
+{% endif %}
 <p class="text-muted mb-4">{{ farmer_count }} farmers under monitoring across {{ ward_table|length }} wards.</p>
 
 <div class="row g-4 mb-4">

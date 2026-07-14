@@ -62,9 +62,9 @@
       <h4 style="color:var(--green);">Maize Advisory Report</h4>
 
       <div class="row g-3 mt-1">
-        <div class="col-6">
+        <div class="col-4">
           <div class="stat-box">
-            <div class="number" style="font-size:1.6rem;">
+            <div class="number" style="font-size:1.4rem;">
               {% if result.timing == "plant_now" %}✅ Plant Now
               {% elif result.timing == "wait" %}⏳ Wait
               {% else %}⚠️ Risky{% endif %}
@@ -72,7 +72,13 @@
             <div class="label">Planting Decision</div>
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-4">
+          <div class="stat-box">
+            <div class="number" style="font-size:1.1rem; color:var(--gold);">📅 {{ result.suggested_planting_date }}</div>
+            <div class="label">Suggested Planting Date</div>
+          </div>
+        </div>
+        <div class="col-4">
           <div class="stat-box">
             <div class="number" style="font-size:1.4rem;">{{ result.risk_label }}</div>
             <div class="label">Risk Level</div>

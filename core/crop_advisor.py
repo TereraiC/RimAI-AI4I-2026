@@ -56,22 +56,47 @@ def get_full_farm_analysis(inputs):
 
     # ── 2. Timing analysis ──
     prov_data = PROVINCE_AGRO.get(province, PROVINCE_AGRO["Harare"])
+    today = datetime.date.today()
     try:
         pd_obj = datetime.datetime.strptime(planting_date_str, "%Y-%m-%d")
         month = pd_obj.month
+        chosen_date = pd_obj.date()
     except Exception:
-        month = datetime.date.today().month
+        month = today.month
+        chosen_date = None
 
     optimal_start = prov_data["season_start"]
-    if month < optimal_start:
-        timing = "wait"
-        timing_msg = f"Too early. Optimal planting for {province} begins around month {optimal_start}. Wait for sustained rains."
-    elif month <= optimal_start + 1:
+    # The suggested date is the 1st of the season-start month, in whichever
+    # year makes it the next upcoming occurrence (this year if that month
+    # hasn't passed yet, otherwise next year) — a specific, actionable date
+    # rather than just validating whatever the farmer typed.
+    suggested_year = today.year if today.month <= optimal_start else today.year + 1
+    suggested_date = datetime.date(suggested_year, optimal_start, 1)
+    suggested_date_str = suggested_date.strftime("%d %B %Y")
+
+    # Months elapsed since the window opened, wraparound-safe (0-11). A raw
+    # "month < optimal_start" comparison breaks across a year boundary —
+    # e.g. February (month=2) is numerically less than November (11) even
+    # though it's chronologically well past a Nov-Dec planting window, not
+    # before it.
+    months_since_start = (month - optimal_start) % 12
+
+    if months_since_start == 0 or months_since_start == 1:
         timing = "plant_now"
-        timing_msg = "Good timing — within the optimal planting window for this area."
-    else:
+        if chosen_date and chosen_date != suggested_date:
+            timing_msg = (f"Your chosen date is within the optimal window for {province}. "
+                           f"For the strongest start, the suggested optimal date this season is {suggested_date_str}.")
+        else:
+            timing_msg = f"Good timing — {suggested_date_str} is the suggested optimal planting date for {province} this season."
+    elif months_since_start <= 4:
         timing = "risky"
-        timing_msg = "Late planting. Consider a short-season variety to reduce moisture-stress risk at tasseling."
+        timing_msg = (f"Late planting for this season. Consider a short-season variety to reduce "
+                       f"moisture-stress risk at tasseling. Suggested planting date for next season: "
+                       f"{suggested_date_str}.")
+    else:
+        timing = "wait"
+        timing_msg = (f"Too early to plant. Suggested planting date for {province}: "
+                       f"{suggested_date_str} (start of the optimal window) — wait for sustained rains before then.")
 
     # ── 3. Fertilizer ──
     soil_data = SOIL_FERTILIZER.get(soil, SOIL_FERTILIZER["Clay-Loam"])
@@ -138,6 +163,7 @@ def get_full_farm_analysis(inputs):
         "weather": weather,
         "timing": timing,
         "timing_msg": timing_msg,
+        "suggested_planting_date": suggested_date_str,
         "fertilizer": {
             "compound_d_kg": cpd_kg,
             "an_kg": an_kg,

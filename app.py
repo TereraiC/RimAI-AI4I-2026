@@ -177,6 +177,9 @@ def init_db():
         if "full_name" not in existing_cols:
             db.execute("ALTER TABLE users ADD COLUMN full_name TEXT")
             db.commit()
+        if "province" not in existing_cols:
+            db.execute("ALTER TABLE users ADD COLUMN province TEXT")
+            db.commit()
 
         # Defensive check: a database seeded before ministry/admin demo
         # accounts existed (e.g. the first Render deploy) has demo/officer
@@ -194,6 +197,15 @@ def init_db():
                 db.execute("INSERT INTO users (username,password,role) VALUES (?,?,?)",
                            (uname, generate_password_hash(pwd), role))
         db.commit()
+
+        # AGRITEX officers cover one province, not the whole country (Ministry
+        # is the national-oversight role) — assign the demo officer account to
+        # Mashonaland West, which has seeded demo farmers with a mix of risk
+        # levels so the scoped view has something meaningful to show.
+        officer_row = db.execute("SELECT province FROM users WHERE username='officer'").fetchone()
+        if officer_row and not officer_row["province"]:
+            db.execute("UPDATE users SET province=? WHERE username='officer'", ("Mashonaland West",))
+            db.commit()
 
 
 def seed_demo_farmer_data():
@@ -618,6 +630,9 @@ def compute_national_snapshot():
 @app.route('/national-dashboard')
 @login_required
 def national_dashboard():
+    if session.get('role') == 'officer':
+        flash('The national map is a Ministry-level view. Your AGRITEX Centre shows your assigned province in full detail.', 'info')
+        return redirect(url_for('agritex_dashboard'))
     province_data = compute_national_snapshot()
     return render_template('national_dashboard.html',
                            province_data=json.dumps(province_data))
@@ -907,6 +922,18 @@ def email_unsubscribe():
 @login_required
 def agritex_dashboard():
     snapshots = latest_farmer_snapshots(DB)
+
+    # AGRITEX officers cover one province ("help one officer effectively
+    # support hundreds of farmers" — not the whole country); Ministry and
+    # Admin retain the full national rollup for oversight purposes.
+    officer_province = None
+    if session.get('role') == 'officer':
+        with get_db() as db:
+            row = db.execute("SELECT province FROM users WHERE id=?", (session['user_id'],)).fetchone()
+        officer_province = row["province"] if row else None
+        if officer_province:
+            snapshots = [s for s in snapshots if s["province"] == officer_province]
+
     ward_table = ward_risk_table(snapshots)
     queue = priority_queue(snapshots)
 
@@ -930,7 +957,13 @@ def agritex_dashboard():
         farmers_by_district.setdefault(s['district'], []).append(s)
 
     with get_db() as db:
-        alloc_rows = db.execute('SELECT * FROM input_allocations ORDER BY province, district').fetchall()
+        if officer_province:
+            alloc_rows = db.execute(
+                'SELECT * FROM input_allocations WHERE province=? ORDER BY district',
+                (officer_province,)
+            ).fetchall()
+        else:
+            alloc_rows = db.execute('SELECT * FROM input_allocations ORDER BY province, district').fetchall()
         visit_rows = db.execute(
             "SELECT fv.*, u.full_name, u.username FROM field_visits fv "
             "JOIN users u ON u.id = fv.farmer_id "
@@ -951,7 +984,7 @@ def agritex_dashboard():
 
     return render_template('agritex_dashboard.html', ward_table=ward_table, priority_queue=queue,
                            farmer_count=len(snapshots), answer=answer, last_question=last_question,
-                           allocations=allocations, visits=visits)
+                           allocations=allocations, visits=visits, officer_province=officer_province)
 
 
 @app.route('/admin')
