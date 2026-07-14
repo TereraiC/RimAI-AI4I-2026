@@ -53,7 +53,7 @@ def build_planting_alert(farm_data):
     province  = farm_data.get("province", "your area")
     timing    = farm_data.get("timing", "unknown")
     variety   = farm_data.get("recommended_variety", "SC513")
-    rainfall  = farm_data.get("total_rainfall_mm", 0)
+    rainfall  = farm_data.get("extrapolated_season_total_mm") or farm_data.get("total_rainfall_mm", 0)
     risk      = farm_data.get("risk_label", "unknown")
 
     if timing == "plant_now":
@@ -102,7 +102,7 @@ def build_pest_warning(farm_data):
 
 def build_weather_alert(farm_data):
     province = farm_data.get("province", "your area")
-    rainfall = float(farm_data.get("total_rainfall_mm", 600))
+    rainfall = float(farm_data.get("extrapolated_season_total_mm") or farm_data.get("total_rainfall_mm", 600))
     temp     = float(farm_data.get("avg_temp_c", 22))
     humidity = float(farm_data.get("avg_humidity_pct", 55))
 
@@ -192,7 +192,7 @@ def build_harvest_reminder(farm_data):
 def build_weekly_digest(farm_data):
     province  = farm_data.get("province", "your area")
     risk      = farm_data.get("risk_label", "unknown")
-    rainfall  = farm_data.get("total_rainfall_mm", 0)
+    rainfall  = farm_data.get("extrapolated_season_total_mm") or farm_data.get("total_rainfall_mm", 0)
     temp      = farm_data.get("avg_temp_c", 0)
     yield_pred= farm_data.get("yield_t_ha", 0)
     pest_alerts = farm_data.get("pest_alerts", [])

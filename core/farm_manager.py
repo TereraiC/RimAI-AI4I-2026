@@ -83,8 +83,8 @@ def farm_memory(current, previous):
         return None
     cur_yield = current.get("yield_t_ha")
     prev_yield = previous.get("yield_t_ha")
-    cur_rain = current.get("weather", {}).get("total_rainfall_mm")
-    prev_rain = previous.get("weather", {}).get("total_rainfall_mm")
+    cur_rain = current.get("weather", {}).get("extrapolated_season_total_mm") or current.get("weather", {}).get("total_rainfall_mm")
+    prev_rain = previous.get("weather", {}).get("extrapolated_season_total_mm") or previous.get("weather", {}).get("total_rainfall_mm")
     prev_inputs = previous.get("inputs_used", {})
     planting_date = prev_inputs.get("planting_date", "last season")
     crop = prev_inputs.get("crop", "maize")
@@ -176,7 +176,7 @@ def run_scenario(base_analysis, rainfall_pct_change=0, temp_delta_c=0, fertilize
     province = inputs.get("province", "Harare")
     farm_size = float(inputs.get("farm_size", 1))
 
-    base_rainfall = float(weather.get("total_rainfall_mm", PROVINCE_META.get(province, {}).get("avg_rain", 700)))
+    base_rainfall = float(weather.get("extrapolated_season_total_mm") or weather.get("total_rainfall_mm") or PROVINCE_META.get(province, {}).get("avg_rain", 700))
     base_temp = float(weather.get("avg_temp_c", 22))
     base_fert_rate = 180 if fertilizer_on else 0
 

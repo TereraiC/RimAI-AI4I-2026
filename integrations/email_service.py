@@ -64,7 +64,7 @@ def build_risk_alert_email(farm_data):
     province = farm_data.get("province", "your farm")
     risk     = farm_data.get("risk_label", "unknown")
     conf     = farm_data.get("risk_confidence", "")
-    rainfall = farm_data.get("total_rainfall_mm", 0)
+    rainfall = farm_data.get("extrapolated_season_total_mm") or farm_data.get("total_rainfall_mm", 0)
     conf_str = f" ({conf}% confidence)" if conf else ""
     subject = f"RimAI Alert: {risk} risk season for {province}"
     body = (f"RimAI Season Risk Update — {province}\n\n"
@@ -96,7 +96,7 @@ def build_pest_alert_email(farm_data):
 def build_weekly_report_email(farm_data):
     province    = farm_data.get("province", "your farm")
     risk        = farm_data.get("risk_label", "unknown")
-    rainfall    = farm_data.get("total_rainfall_mm", 0)
+    rainfall    = farm_data.get("extrapolated_season_total_mm") or farm_data.get("total_rainfall_mm", 0)
     temp        = farm_data.get("avg_temp_c", 0)
     yield_pred  = farm_data.get("yield_t_ha", 0)
     size        = farm_data.get("farm_size", 1)
