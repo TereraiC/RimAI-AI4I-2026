@@ -511,6 +511,18 @@ def chat():
 @login_required
 def api_chat():
     message = request.form.get('message', '')
+
+    # Photo-based diagnosis is Phase 2 roadmap, not built yet. The upload
+    # button is still visible (clearly labelled "coming soon") so farmers
+    # can see the feature is planned, but if an image is actually attached
+    # it must never be silently discarded — say so honestly.
+    if 'image' in request.files and request.files['image'].filename:
+        image_note = ("📷 I can see you attached a photo — image-based pest/disease diagnosis "
+                       "is under construction (Phase 2 roadmap) and isn't available yet, so I haven't "
+                       "analyzed it. ")
+    else:
+        image_note = ""
+
     analysis = session.get('last_analysis', {})
     farm_data = {}
     if analysis:
@@ -545,6 +557,8 @@ def api_chat():
         result = get_chat_response(message, farm_data, username=session.get('username',''), last_intent=last_intent)
         if result.get('intent'):
             session['last_chat_intent'] = result['intent']
+    if image_note:
+        result['reply'] = image_note + result['reply']
     with get_db() as db:
         db.execute('INSERT INTO chat_history (user_id, role, content) VALUES (?,?,?)',
                    (session['user_id'], 'user', message))
