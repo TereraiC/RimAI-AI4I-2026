@@ -118,3 +118,33 @@ def system_health(db_path, model_dir="models"):
         "last_trained": last_trained,
         "db_size_kb": db_size_kb,
     }
+
+
+def recent_activity(db_path, limit=30):
+    """Real visit log for the Admin 'Recent Activity' panel — lets you
+    actually see whether the live site is being visited/explored (which
+    pages, by which demo role, when), not just take it on faith."""
+    with _db(db_path) as db:
+        rows = db.execute(
+            "SELECT path, method, username, role, ip_address, created_at "
+            "FROM page_visits ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        visits = [dict(r) for r in rows]
+
+        today = datetime.date.today().isoformat()
+        today_count = db.execute(
+            "SELECT COUNT(*) FROM page_visits WHERE date(created_at) = ?", (today,)
+        ).fetchone()[0]
+        today_unique_sessions = db.execute(
+            "SELECT COUNT(DISTINCT COALESCE(username, ip_address)) FROM page_visits WHERE date(created_at) = ?",
+            (today,),
+        ).fetchone()[0]
+        total_count = db.execute("SELECT COUNT(*) FROM page_visits").fetchone()[0]
+
+    return {
+        "visits": visits,
+        "today_count": today_count,
+        "today_unique_sessions": today_unique_sessions,
+        "total_count": total_count,
+    }

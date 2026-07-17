@@ -89,6 +89,48 @@
 </div>
 
 <div class="card mb-4">
+  <div class="card-header-harvest d-flex justify-content-between align-items-center">
+    <span>📡 Recent Activity</span>
+    <small style="opacity:0.8;">Real visit log — refresh this page to update</small>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3 text-center">
+      <div class="col-4"><div class="stat-box">
+        <div class="number" style="font-size:1.6rem;">{{ activity.today_count }}</div>
+        <div class="label">Page views today</div>
+      </div></div>
+      <div class="col-4"><div class="stat-box">
+        <div class="number" style="font-size:1.6rem;">{{ activity.today_unique_sessions }}</div>
+        <div class="label">Unique visitors today</div>
+      </div></div>
+      <div class="col-4"><div class="stat-box">
+        <div class="number" style="font-size:1.6rem;">{{ activity.total_count }}</div>
+        <div class="label">Total page views (all time)</div>
+      </div></div>
+    </div>
+    {% if activity.visits %}
+    <div style="max-height:280px; overflow-y:auto;">
+      <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+        <thead><tr><th>Time</th><th>Path</th><th>Role</th><th>IP</th></tr></thead>
+        <tbody>
+          {% for v in activity.visits %}
+          <tr>
+            <td style="white-space:nowrap;">{{ v.created_at }}</td>
+            <td><code>{{ v.path }}</code></td>
+            <td>{{ v.role or '—' }}{% if v.username %} ({{ v.username }}){% endif %}</td>
+            <td class="text-muted">{{ v.ip_address or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No visits logged yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mb-4">
   <div class="card-header-harvest">🗂️ Data Provenance &amp; Transparency</div>
   <div class="card-body p-4">
     <p class="mb-3">Full registry of every dataset RimAI uses — real, synthetic, or hybrid — with generation methodology, confidence notes, and detected gaps.</p>

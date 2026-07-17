@@ -37,7 +37,7 @@ def test_fresh_database_has_all_required_tables_and_columns(monkeypatch, tmp_pat
     required_tables = {
         "users", "predictions", "yield_history",
         "whatsapp_subscriptions", "whatsapp_log", "chat_history",
-        "field_visits", "input_allocations",
+        "field_visits", "input_allocations", "page_visits",
     }
     missing = required_tables - tables
     assert not missing, f"Fresh database is missing tables: {missing}"

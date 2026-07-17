@@ -119,6 +119,15 @@ def init_db():
                 bags_allocated INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS page_visits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT,
+                method TEXT,
+                username TEXT,
+                role TEXT,
+                ip_address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
         existing = db.execute("SELECT id FROM users WHERE username='demo'").fetchone()
         if not existing:
@@ -282,6 +291,29 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return dec
+
+
+_SKIP_LOGGING_PREFIXES = ('/static', '/favicon')
+_SKIP_LOGGING_EXACT = {'/api/chat'}  # logged separately via chat_history already
+
+
+@app.before_request
+def log_page_visit():
+    path = request.path
+    if request.method in ('OPTIONS', 'HEAD'):
+        return
+    if path.startswith(_SKIP_LOGGING_PREFIXES) or path in _SKIP_LOGGING_EXACT:
+        return
+    try:
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO page_visits (path, method, username, role, ip_address) VALUES (?,?,?,?,?)",
+                (path, request.method, session.get('username'), session.get('role'), ip),
+            )
+            db.commit()
+    except Exception:
+        pass  # visit logging must never break the actual request
 
 
 @app.context_processor
@@ -1047,11 +1079,12 @@ def admin_dashboard():
     backtest_results, metrics, is_synthetic = admin_module.load_backtest()
     pipeline_stages = admin_module.data_pipeline_status()
     health = admin_module.system_health(DB)
+    activity = admin_module.recent_activity(DB)
     return render_template('admin_dashboard.html', model_meta=model_meta,
                            backtest_results=backtest_results, metrics=metrics,
                            is_synthetic=is_synthetic, pipeline_stages=pipeline_stages,
                            health=health, whatsapp_live=twilio_configured(),
-                           email_live=email_configured())
+                           email_live=email_configured(), activity=activity)
 
 
 @app.route('/admin/data-provenance')
