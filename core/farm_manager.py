@@ -21,16 +21,19 @@ def health_score(analysis):
     risk_score = {"Low": 92, "Moderate": 62, "High": 32}.get(risk_label, 55)
 
     timing = analysis.get("timing", "unknown")
+    has_planted = analysis.get("has_planted", False)  # safe default for pre-fix stored data lacking this field
     alerts = analysis.get("pest_risk", {}).get("active_alerts", [])
-    if timing == "plant_now":
+    if has_planted:
         penalty = sum(25 if a.get("severity") == "High" else 15 if a.get("severity") == "Moderate" else 8
                       for a in alerts)
         pest_score = max(0, 100 - penalty)
     else:
-        # Nothing is confirmed planted yet (timing is "wait" or "risky") —
-        # pest pressure can't meaningfully apply to a crop that doesn't
-        # exist, so it shouldn't drag down the overall score before the
-        # farmer has even started this season.
+        # Nothing is actually in the ground yet — either the window hasn't
+        # opened (timing="wait"/"risky"), or the chosen planting date is
+        # still in the future even though the window is open — so pest
+        # pressure can't meaningfully apply to a crop that doesn't exist,
+        # and shouldn't drag down the overall score before planting has
+        # actually happened.
         pest_score = 100
 
     province = analysis.get("inputs_used", {}).get("province", "Harare")
@@ -66,7 +69,11 @@ def daily_brief(analysis, latest_alert_message=None):
     from current weather alone, regardless of whether the farmer has
     actually planted, so presenting them as "priority today: scout for X"
     ahead of a "too early to plant" verdict would tell a farmer to scout
-    a crop that doesn't exist yet.
+    a crop that doesn't exist yet. Crucially, timing=="plant_now" only
+    means the window is open — it does NOT mean the farmer has actually
+    planted if their chosen date is still in the future, so has_planted
+    (an actual date comparison) gates the pest-priority message, not
+    timing alone.
     """
     if latest_alert_message:
         return latest_alert_message
@@ -74,6 +81,7 @@ def daily_brief(analysis, latest_alert_message=None):
     timing = analysis.get("timing", "unknown")
     risk_label = analysis.get("risk_label", "unknown")
     alerts = analysis.get("pest_risk", {}).get("active_alerts", [])
+    has_planted = analysis.get("has_planted", False)  # safe default for pre-fix stored data lacking this field
 
     if timing == "wait":
         if alerts:
@@ -84,13 +92,17 @@ def daily_brief(analysis, latest_alert_message=None):
         return "Too early to plant — hold off until sustained rain arrives. No action needed today."
     if timing == "risky":
         return f"Late planting window — {risk_label} risk. Consider a short-season variety to reduce exposure."
-    if timing == "plant_now":
+    if timing == "plant_now" and not has_planted:
+        return (f"The planting window is open — good day to plant. Once you do, keep an eye out for "
+                 f"{alerts[0]['name']} given current weather conditions.") if alerts else \
+               f"The planting window is open and season risk is {risk_label}. Good day to plant or continue planting."
+    if timing == "plant_now" and has_planted:
         if alerts:
             top = alerts[0]
             return (f"Priority today: scout for {top['name']} ({top['severity']} risk) — "
                      f"{top['action'].split('.')[0]}.")
         return f"The planting window is open and season risk is {risk_label}. Good day to plant or continue planting."
-    if alerts:
+    if has_planted and alerts:
         top = alerts[0]
         return (f"Priority today: scout for {top['name']} ({top['severity']} risk) — "
                  f"{top['action'].split('.')[0]}.")

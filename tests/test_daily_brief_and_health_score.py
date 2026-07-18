@@ -47,8 +47,24 @@ def test_daily_brief_still_mentions_pest_as_forward_looking_when_too_early():
 
 def test_daily_brief_prioritizes_pest_scouting_when_actually_planted():
     analysis = _analysis("plant_now", alerts=[PEST_ALERT])
+    analysis["has_planted"] = True
     brief = daily_brief(analysis)
     assert "Priority today: scout for Fall Armyworm" in brief
+
+
+def test_daily_brief_does_not_show_active_pest_priority_for_future_plant_now_date():
+    """Regression test for the deeper bug: timing=='plant_now' only means
+    the window is open, not that the farmer has actually planted. A
+    future chosen date within the window must not trigger 'Priority
+    today: scout for X' — that's exactly the case the user reported
+    ('why do we have Fall Armyworm when we don't have anything in the
+    ground')."""
+    analysis = _analysis("plant_now", alerts=[PEST_ALERT])
+    analysis["has_planted"] = False
+    brief = daily_brief(analysis)
+    assert "Priority today: scout" not in brief
+    assert "Fall Armyworm" in brief
+    assert "once you do" in brief.lower()
 
 
 def test_daily_brief_risky_timing_does_not_get_overridden_by_pest():
@@ -63,7 +79,32 @@ def test_health_score_neutralizes_pest_penalty_when_not_planted():
     assert score["pest"] == 100
 
 
+def test_health_score_neutralizes_pest_penalty_for_future_plant_now_date():
+    """Same regression as the Daily Brief test, applied to the Farm
+    Health Score's Pest Risk component."""
+    analysis = _analysis("plant_now", alerts=[PEST_ALERT])
+    analysis["has_planted"] = False
+    score = health_score(analysis)
+    assert score["pest"] == 100
+
+
 def test_health_score_applies_pest_penalty_when_actually_planted():
     analysis = _analysis("plant_now", alerts=[PEST_ALERT])
+    analysis["has_planted"] = True
     score = health_score(analysis)
     assert score["pest"] < 100
+
+
+def test_stale_stored_analysis_missing_has_planted_self_heals_safely():
+    """Regression test for a real bug reported live: predictions saved to
+    the database BEFORE the has_planted field existed in the code have no
+    such key at all when read back. The fallback default must assume
+    'not planted' (safe) rather than deriving it from timing=='plant_now'
+    (which silently reintroduces the exact bug this field was added to
+    fix — 'Priority today: scout for Fall Armyworm' for a stale record
+    with no positive confirmation anything is actually in the ground)."""
+    stale_analysis = _analysis("plant_now", alerts=[PEST_ALERT])
+    # deliberately no "has_planted" key set — simulates pre-fix stored data
+    brief = daily_brief(stale_analysis)
+    assert "Priority today: scout" not in brief
+    assert health_score(stale_analysis)["pest"] == 100

@@ -105,7 +105,11 @@ def build_explanation(analysis):
         })
 
     # ── Pest/disease analysis ────────────────────────────────────────────────
-    not_yet_planted = timing in ("wait", "risky")
+    # Use the actual has_planted check (chosen date vs today), not just the
+    # timing verdict — "plant_now" only means the window is open, it does
+    # not mean the farmer has actually planted yet if their chosen date is
+    # still in the future.
+    not_yet_planted = not analysis.get("has_planted", False)  # safe default for pre-fix stored data
     for alert in pest.get("active_alerts", []):
         if not_yet_planted:
             factors.append(f"{alert['name']} pressure to expect once planted — {alert['severity']} severity "
