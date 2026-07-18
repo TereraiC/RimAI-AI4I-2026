@@ -2,7 +2,9 @@
 {% block title %} | Crop Advisor{% endblock %}
 {% block content %}
 <p class="section-eyebrow mb-1">Module 1</p>
-<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Crop Advisor</h2>
+<h2 style="font-family:'DM Serif Display',serif; color:var(--green);">
+  Crop Advisor <span class="badge" style="background:var(--gold); color:#3d2b1f; font-size:0.55em; vertical-align:middle;">🌽 Maize — current MVP scope</span>
+</h2>
 {% if session.role == 'officer' %}
 <div class="p-2 px-3 mb-3" style="background:var(--mist);border-radius:8px;border-left:4px solid var(--green);display:inline-block;font-size:0.85rem;">
   🧑‍🌾 <strong>Field Assessment Mode:</strong> use this during a farm visit to generate a live recommendation for the farmer in front of you — "your farm" below refers to whichever field you're assessing right now, not a farm of your own.

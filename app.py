@@ -391,7 +391,7 @@ def advisor():
             'province': request.form.get('province'),
             'district': request.form.get('district'),
             'soil_type': request.form.get('soil_type'),
-            'crop': request.form.get('crop', 'Maize'),
+            'crop': 'Maize',  # MVP scope is maize only — see core/crop_advisor.py for the server-side enforcement
             'previous_crop': request.form.get('previous_crop'),
             'years_continuous': int(request.form.get('years_continuous', 1)),
             'planting_date': request.form.get('planting_date'),

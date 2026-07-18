@@ -43,7 +43,13 @@ def get_full_farm_analysis(inputs):
     """
     province = inputs.get("province", "Harare")
     soil = inputs.get("soil_type", "Clay-Loam")
-    crop = inputs.get("crop", "Maize")
+    # RimAI's current MVP scope is maize only — the yield/risk models,
+    # fertilizer rates, and pest thresholds are all calibrated and
+    # validated against maize specifically. The form has no crop selector
+    # (so a normal user can never choose anything else), but this also
+    # enforces it server-side against any direct API call, so the result
+    # can never silently claim validated advice for an unvalidated crop.
+    crop = "Maize"
     previous_crop = inputs.get("previous_crop", "Fallow/None")
     farm_size = float(inputs.get("farm_size", 1))
     years_continuous = int(inputs.get("years_continuous", 1))
@@ -167,6 +173,19 @@ def get_full_farm_analysis(inputs):
         "timing_msg": timing_msg,
         "suggested_planting_date": suggested_date_str,
         "suggested_planting_date_iso": suggested_date.strftime("%Y-%m-%d"),
+        # Whether the crop is actually likely to be growing right now.
+        # 'timing' (wait/risky/plant_now) only says whether the chosen
+        # date falls in a good window — it says nothing about whether that
+        # date is in the past or future, or whether a crop planted long
+        # enough ago has already been harvested. A farmer who enters a
+        # planting date next week correctly gets timing="plant_now" (good
+        # time to plant), but nothing is growing yet; a farmer whose
+        # chosen date was 8 months ago has almost certainly already
+        # harvested (standard cycle is ~135 days) — neither should show
+        # active pest/scouting language for a field that's empty either
+        # way. Buffer beyond 135 days accounts for late harvest/drying time.
+        "has_planted": bool(chosen_date and chosen_date <= today
+                             and (today - chosen_date).days <= 150),
         "fertilizer": {
             "compound_d_kg": cpd_kg,
             "an_kg": an_kg,
