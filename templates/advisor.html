@@ -3,6 +3,11 @@
 {% block content %}
 <p class="section-eyebrow mb-1">Module 1</p>
 <h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Crop Advisor</h2>
+{% if session.role == 'officer' %}
+<div class="p-2 px-3 mb-3" style="background:var(--mist);border-radius:8px;border-left:4px solid var(--green);display:inline-block;font-size:0.85rem;">
+  🧑‍🌾 <strong>Field Assessment Mode:</strong> use this during a farm visit to generate a live recommendation for the farmer in front of you — "your farm" below refers to whichever field you're assessing right now, not a farm of your own.
+</div>
+{% endif %}
 <p class="text-muted mb-4">Minimal input — RimAI fetches live weather automatically and checks your rotation history and pest risk.</p>
 
 <div class="row">
@@ -60,6 +65,18 @@
     <div class="result-panel">
       <p class="section-eyebrow mb-2">AI Recommendation</p>
       <h4 style="color:var(--green);">Maize Advisory Report</h4>
+
+      <div class="text-center p-4 mb-3" style="background:linear-gradient(135deg,var(--green),#1b4332);border-radius:12px;">
+        <div style="color:var(--gold); font-size:0.9rem; letter-spacing:1px; text-transform:uppercase;">Predicted Yield</div>
+        <div style="color:white; font-size:3.2rem; font-weight:700; font-family:'DM Serif Display',serif; line-height:1.1;">
+          {{ result.yield_t_ha }} <span style="font-size:1.6rem; font-weight:400;">t/ha</span>
+        </div>
+        {% if result.vs_province_norm is not none %}
+        <div style="color:{{ '#95d5b2' if result.vs_province_norm >= 0 else '#f4a3a3' }}; font-size:0.9rem;">
+          {{ '+' if result.vs_province_norm >= 0 else '' }}{{ result.vs_province_norm }}% vs. province average
+        </div>
+        {% endif %}
+      </div>
 
       <div class="row g-3 mt-1">
         <div class="col-4">
@@ -184,6 +201,34 @@
 </div>
 
 <script>
+// Real province centroids (from Zimbabwe admin boundary data) — used to
+// auto-select the nearest matching province when GPS location is captured,
+// since the coordinates alone were previously going nowhere visible.
+const PROVINCE_CENTROIDS = {
+  "Mashonaland Central": [-16.6987, 31.1941],
+  "Matabeleland South": [-21.0105, 28.9920],
+  "Masvingo": [-20.7864, 31.2386],
+  "Matabeleland North": [-18.8234, 27.4009],
+  "Midlands": [-18.9814, 29.4640],
+  "Mashonaland West": [-17.1815, 29.7073],
+  "Bulawayo": [-20.1218, 28.5557],
+  "Manicaland": [-19.0624, 32.3981],
+  "Mashonaland East": [-17.9802, 31.6963],
+  "Harare": [-17.8511, 31.0539],
+};
+
+function nearestProvince(lat, lon) {
+  let best = null, bestDist = Infinity;
+  for (const [prov, [plat, plon]] of Object.entries(PROVINCE_CENTROIDS)) {
+    // Simple Euclidean distance on lat/lon is fine at this scale (a single
+    // country, ~5-8 degrees across) — no need for full haversine precision
+    // just to pick the nearest of 10 well-separated province centroids.
+    const d = Math.pow(lat - plat, 2) + Math.pow(lon - plon, 2);
+    if (d < bestDist) { bestDist = d; best = prov; }
+  }
+  return best;
+}
+
 function useLocation() {
   const status = document.getElementById('locStatus');
   if (!navigator.geolocation) {
@@ -193,11 +238,22 @@ function useLocation() {
   status.innerText = 'Locating...';
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      document.getElementById('lat').value = pos.coords.latitude;
-      document.getElementById('lon').value = pos.coords.longitude;
-      status.innerText = `📍 Location captured (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      document.getElementById('lat').value = lat;
+      document.getElementById('lon').value = lon;
+
+      const matchedProvince = nearestProvince(lat, lon);
+      const provinceSelect = document.querySelector('select[name="province"]');
+      for (const opt of provinceSelect.options) {
+        if (opt.value === matchedProvince || opt.text === matchedProvince) {
+          provinceSelect.value = opt.value;
+          break;
+        }
+      }
+      status.innerText = `📍 Location captured — province set to ${matchedProvince} `
+                        + `(${lat.toFixed(3)}, ${lon.toFixed(3)})`;
     },
-    () => { status.innerText = 'Could not get location — using province estimate instead.'; }
+    () => { status.innerText = 'Could not get location — select your province manually.'; }
   );
 }
 </script>

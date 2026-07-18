@@ -133,6 +133,7 @@ def get_full_farm_analysis(inputs):
     # ── 7. ML risk confidence from yield model ──
     risk_confidence = None
     yield_t_ha = None
+    vs_province_norm = None
     try:
         from core.harvest_model import predict_yield as _py
         _yresult = _py({
@@ -144,6 +145,7 @@ def get_full_farm_analysis(inputs):
         })
         risk_confidence = _yresult.get("risk_confidence")
         yield_t_ha      = _yresult.get("yield_t_ha")
+        vs_province_norm = _yresult.get("vs_province_norm")
         # Deliberately NOT overwriting risk_label here: the score above
         # already accounts for planting timing, agro-ecological zone,
         # rainfall, AND rotation/pest pressure (rotation_score bonus).
@@ -174,6 +176,7 @@ def get_full_farm_analysis(inputs):
         "risk_score": risk,
         "risk_confidence": risk_confidence,
         "yield_t_ha": yield_t_ha,
+        "vs_province_norm": vs_province_norm,
         "risk_label": risk_label,
         "agro_zone": prov_data["zone"],
         "recommended_variety": recommended_variety,

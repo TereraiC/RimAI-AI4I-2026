@@ -417,22 +417,12 @@ def advisor():
 @app.route('/yield', methods=['GET', 'POST'])
 @login_required
 def yield_pred():
-    result = None
-    if request.method == 'POST':
-        inputs = {
-            'rainfall_mm': float(request.form.get('rainfall_mm', 600)),
-            'temperature_c': float(request.form.get('temperature_c', 22)),
-            'soil_type': request.form.get('soil_type'),
-            'planting_month': int(request.form.get('planting_month', 11)),
-            'farm_size_ha': float(request.form.get('farm_size_ha', 1)),
-            'rotation_score': float(request.form.get('rotation_score', 0)),
-        }
-        result = predict_yield(inputs)
-        with get_db() as db:
-            db.execute('INSERT INTO predictions (user_id,prediction_type,inputs,result) VALUES (?,?,?,?)',
-                       (session['user_id'], 'yield_prediction', json.dumps(inputs), json.dumps(result)))
-            db.commit()
-    return render_template('yield.html', result=result, soil_types=SOIL_TYPES)
+    # Retired: this was a thinner, more technical duplicate of Crop Advisor
+    # (manual rainfall/temperature entry, no live weather lookup, no
+    # fertilizer/pest/timing/variety advice). Redirect rather than remove
+    # outright so any existing bookmarks/links still land somewhere useful.
+    flash('Yield Prediction has been folded into Crop Advisor — same model, plus live weather, fertilizer, pest, and timing guidance.', 'info')
+    return redirect(url_for('advisor'))
 
 
 @app.route('/farm-manager', methods=['GET', 'POST'])

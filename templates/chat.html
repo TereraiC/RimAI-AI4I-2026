@@ -3,6 +3,11 @@
 {% block content %}
 <p class="section-eyebrow mb-1">Module 4</p>
 <h2 style="font-family:'DM Serif Display',serif; color:var(--green);">Farm Assistant</h2>
+{% if session.role == 'officer' %}
+<div class="p-2 px-3 mb-3" style="background:var(--mist);border-radius:8px;border-left:4px solid var(--green);display:inline-block;font-size:0.85rem;">
+  🧑‍🌾 <strong>Quick Reference Mode:</strong> ask fertilizer rates, timing windows, or pest thresholds on the go — answers use whichever field assessment you ran most recently.
+</div>
+{% endif %}
 <p class="text-muted mb-1">Ask anything — fertilizer timing, pest symptoms, weather concerns. The assistant already knows your latest farm analysis.</p>
 <p class="text-muted mb-4" style="font-size:0.82rem;">📷 Photo-based pest/disease diagnosis is <strong>under construction</strong> (Phase 2 roadmap) — describe symptoms in words for now and I'll help based on that.</p>
 
