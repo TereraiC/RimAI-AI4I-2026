@@ -71,6 +71,12 @@
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header-harvest">🚩 Farmer Priority Queue</div>
+      {% if session.role != 'officer' %}
+      <div class="p-2 px-3" style="background:#fff8ec;border-left:4px solid var(--gold);font-size:0.8rem;">
+        🔒 Individual farmer identities are visible to their assigned AGRITEX officer only.
+        This view is anonymized — see the aggregated Ward Risk Overview above for district-level detail.
+      </div>
+      {% endif %}
       <div class="card-body p-0">
         <table class="table table-hover mb-0" style="font-size:0.87rem;">
           <thead><tr><th>#</th><th>Farmer</th><th>Ward</th><th>Risk</th><th>Primary Factor</th><th>Pest</th><th>Yield</th></tr></thead>
@@ -78,7 +84,7 @@
             {% for f in priority_queue %}
             <tr>
               <td>{{ loop.index }}</td>
-              <td>{{ f.name }}</td>
+              <td>{{ f.name if session.role == 'officer' else 'Farmer #' ~ loop.index }}</td>
               <td>{{ f.district }}</td>
               <td>
                 {% if f.risk_label == 'High' %}<span class="badge bg-danger">High</span>
@@ -118,6 +124,7 @@
 </div>
 
 <div class="row g-4">
+  {% if session.role == 'officer' %}
   <div class="col-lg-5">
     <div class="card">
       <div class="card-header-harvest">📋 Log a Field Visit</div>
@@ -149,10 +156,16 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header-harvest">🧾 Recent Field Visit Reports</div>
+      {% if session.role != 'officer' and visits %}
+      <div class="p-2 px-3" style="background:#fff8ec;border-left:4px solid var(--gold);font-size:0.8rem;">
+        🔒 Farmer identities in visit reports are visible to the assigned AGRITEX officer only.
+      </div>
+      {% endif %}
       <div class="card-body p-0">
         {% if visits %}
         <table class="table table-hover mb-0" style="font-size:0.85rem;">
@@ -160,7 +173,7 @@
           <tbody>
             {% for v in visits %}
             <tr>
-              <td>{{ v.farmer_name }}</td>
+              <td>{{ v.farmer_name if session.role == 'officer' else 'Farmer #' ~ loop.index }}</td>
               <td>{{ v.observation }}</td>
               <td>{{ v.recommendation }}</td>
               <td>{{ v.follow_up_date }}</td>

@@ -1047,11 +1047,22 @@ def agritex_dashboard():
             ).fetchall()
         else:
             alloc_rows = db.execute('SELECT * FROM input_allocations ORDER BY province, district').fetchall()
-        visit_rows = db.execute(
-            "SELECT fv.*, u.full_name, u.username FROM field_visits fv "
-            "JOIN users u ON u.id = fv.farmer_id "
-            "ORDER BY fv.created_at DESC LIMIT 10"
-        ).fetchall()
+        if officer_province:
+            visit_rows = db.execute(
+                "SELECT fv.*, u.full_name, u.username FROM field_visits fv "
+                "JOIN users u ON u.id = fv.farmer_id "
+                "JOIN predictions p ON p.user_id = fv.farmer_id "
+                "WHERE p.prediction_type='crop_advisor' "
+                "AND json_extract(p.result, '$.inputs_used.province') = ? "
+                "ORDER BY fv.created_at DESC LIMIT 10",
+                (officer_province,),
+            ).fetchall()
+        else:
+            visit_rows = db.execute(
+                "SELECT fv.*, u.full_name, u.username FROM field_visits fv "
+                "JOIN users u ON u.id = fv.farmer_id "
+                "ORDER BY fv.created_at DESC LIMIT 10"
+            ).fetchall()
 
     allocations = []
     for a in alloc_rows:
