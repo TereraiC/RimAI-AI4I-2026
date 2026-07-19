@@ -147,25 +147,19 @@ dedicated registry, viewable live at `/admin/data-provenance` (login as `admin`)
 - **Known gaps:** livestock records, market price history, AGRITEX inspection reports,
   and disease observation logs have no real data source yet — disclosed, not hidden.
 
-## Deploying a Persistent Demo URL
+## Deployment
 
-Running via Colab + ngrok only stays live while that notebook session is open — not
-reliable for a judge clicking the link days later. This repo includes ready-to-use
-deployment config for free-tier persistent hosting:
+RimAI is deployed on Render's free tier at a persistent URL (not a Colab/ngrok
+session, which only stays live while that notebook is open). `render.yaml` in this
+repo defines the build and start commands (`gunicorn app:app`), so Render builds and
+serves the app directly from this repository on every push to `main`.
 
-**Render.com (recommended, ~2 minutes):**
-1. Push this repo to GitHub.
-2. On [render.com](https://render.com), New → Blueprint → connect the repo.
-   `render.yaml` in this repo configures the build and start commands automatically.
-3. Render deploys `gunicorn app:app` on the free tier and gives you a permanent
-   `https://rimai-xxxx.onrender.com` URL.
+To redeploy elsewhere or reproduce this setup:
 
-**PythonAnywhere (manual, ~10 minutes):** upload the repo, create a virtualenv,
-`pip install -r requirements.txt`, and point a Flask web app at `app:app` in the
-PythonAnywhere web console.
-
-Either way, that URL is what should go in the "Demo URL" field of the AI4I submission
-portal — not a Colab/ngrok link.
+- **Render**: connect this repo via Render's Blueprint flow — `render.yaml` handles the
+  rest automatically.
+- **PythonAnywhere**: upload the repo, create a virtualenv, `pip install -r requirements.txt`,
+  and point a Flask web app at `app:app`.
 
 ## License
 
