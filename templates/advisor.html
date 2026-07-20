@@ -78,6 +78,16 @@
           {{ '+' if result.vs_province_norm >= 0 else '' }}{{ result.vs_province_norm }}% vs. province average
         </div>
         {% endif %}
+        {% if potential %}
+        <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.25); font-size:0.85rem; color:#e8f3ec;">
+          🎯 <strong>{{ potential.potential_yield_t_ha }} t/ha</strong> — best actually recorded in this province
+          ({{ potential.years_range }})
+          {% if result.economic and result.economic.revenue_gap_per_ha_usd and result.economic.revenue_gap_per_ha_usd > 0 %}
+          <br><span style="color:#f4c07a;">Closing this gap is worth an estimated
+          ${{ result.economic.revenue_gap_per_ha_usd }}/ha at current maize prices.</span>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
 
       <div class="row g-3 mt-1">

@@ -9,6 +9,7 @@ no numbers are invented that aren't traceable back to those.
 """
 import datetime
 from core.harvest_model import PROVINCE_META, predict_yield
+from core.crop_advisor import PROVINCE_AGRO
 
 
 def health_score(analysis):
@@ -201,11 +202,21 @@ def action_calendar(analysis):
     }
 
 
-def run_scenario(base_analysis, rainfall_pct_change=0, temp_delta_c=0, fertilizer_on=True):
+def run_scenario(base_analysis, rainfall_pct_change=0, temp_delta_c=0, fertilizer_on=True,
+                  planting_delay_days=0):
     """
-    Re-run the yield model with adjusted rainfall/temperature/fertilizer
-    assumptions and compare against the farmer's current baseline —
-    the What-If Scenario Simulator.
+    Re-run the yield model with adjusted rainfall/temperature/fertilizer/
+    planting-date assumptions and compare against the farmer's current
+    baseline — the What-If Scenario Simulator.
+
+    planting_delay_days: shifts the effective planting date forward by
+    this many days from whatever the farmer actually chose (or today, if
+    no date was set). A delay that pushes planting past the province's
+    optimal window incurs a yield penalty proportional to the delay,
+    consistent with the 'risky'/late-planting logic used elsewhere
+    (core.crop_advisor's timing check) — a farmer asking 'what if I
+    delay 10 days' should see a worse, not identical, prediction if that
+    delay pushes them out of the window.
     """
     inputs = base_analysis.get("inputs_used", {})
     weather = base_analysis.get("weather", {})
@@ -216,27 +227,59 @@ def run_scenario(base_analysis, rainfall_pct_change=0, temp_delta_c=0, fertilize
     base_temp = float(weather.get("avg_temp_c", 22))
     base_fert_rate = 180 if fertilizer_on else 0
 
+    # Work out the effective planting month after the delay, and whether
+    # that delay pushes past the province's optimal window.
+    chosen_date_str = inputs.get("planting_date")
+    try:
+        base_planting_date = datetime.datetime.strptime(chosen_date_str[:10], "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        base_planting_date = datetime.date.today()
+    delayed_date = base_planting_date + datetime.timedelta(days=planting_delay_days)
+    effective_month = delayed_date.month
+
+    optimal_start = PROVINCE_AGRO.get(province, PROVINCE_AGRO.get("Harare", {})).get("season_start", 11)
+    months_past_window = max(0, (effective_month - optimal_start) % 12 - 1)
+    # A modest, disclosed penalty (not a precision agronomic model) —
+    # each month past the optimal window beyond the first knocks yield
+    # down, reflecting the real late-planting risk (shorter grain-fill
+    # window before dry season onset) that core.crop_advisor's rule-based
+    # timing check already warns about qualitatively.
+    delay_penalty_factor = max(0.5, 1 - months_past_window * 0.12)
+
+    # Deliberately keep planting_month at the model's normal trained range
+    # (the province's own optimal start) rather than feeding it the
+    # shifted/delayed month directly — the Ridge model wasn't trained on
+    # out-of-season month values and doesn't extrapolate sensibly to them
+    # (confirmed: a 60-day delay pushing into January produced a HIGHER
+    # raw prediction than the baseline, which is backwards). The delay's
+    # effect is applied afterward as its own explicit, disclosed penalty
+    # instead, keeping the two effects — rainfall/temp/fertilizer changes
+    # vs. late-planting risk — cleanly separated and each individually
+    # correct rather than conflating them inside one ML call.
     scenario_inputs = {
         "province": province,
         "rainfall_mm": round(base_rainfall * (1 + rainfall_pct_change / 100), 1),
         "temperature_c": round(base_temp + temp_delta_c, 1),
-        "planting_month": 11,
+        "planting_month": optimal_start,
         "farm_size_ha": farm_size,
         "fertilizer_rate": base_fert_rate,
     }
     result = predict_yield(scenario_inputs)
+    adjusted_yield = round(result["yield_t_ha"] * delay_penalty_factor, 2)
 
     base_yield = float(base_analysis.get("yield_t_ha") or 0)
-    new_yield = result["yield_t_ha"]
-    yield_delta = round(new_yield - base_yield, 2)
+    yield_delta = round(adjusted_yield - base_yield, 2)
 
     price = base_analysis.get("economic", {}).get("maize_price_per_tonne", 280)
     revenue_delta = round(yield_delta * farm_size * price, 0)
 
     return {
         "scenario_inputs": scenario_inputs,
-        "yield_t_ha": new_yield,
+        "yield_t_ha": adjusted_yield,
         "risk_label": result["risk_label"],
         "yield_delta": yield_delta,
         "revenue_delta_usd": int(revenue_delta),
+        "planting_delay_days": planting_delay_days,
+        "delayed_planting_date": delayed_date.isoformat(),
+        "delay_penalty_applied": delay_penalty_factor < 1.0,
     }
