@@ -154,14 +154,19 @@ def _build_single_response(intent, farm_data, username=""):
     name        = username.capitalize() if username else ""
     p           = f"{name}, " if name else ""
 
+    suggested_date = farm_data.get("suggested_planting_date", "")
+
     if intent == "plant_now":
         if timing == "plant_now":
             return (f"{p}conditions in {province} are within the optimal planting window. "
                     f"Rainfall: {rainfall}mm, temperature: {temp}°C — plant now. "
                     f"Recommended variety: {variety}.")
         elif timing == "wait":
-            return (f"{p}too early to plant in {province}. Wait for 25mm+ of sustained rain. "
-                    f"Current rainfall: {rainfall}mm. Planting dry wastes seed.")
+            date_note = f" Suggested planting date: {suggested_date}." if suggested_date else ""
+            return (f"{p}too early to plant in {province} — outside the optimal planting window "
+                    f"for this province.{date_note} ({rainfall}mm is the recent seasonal rainfall "
+                    f"total, not a live reading — timing here is based on the calendar window, "
+                    f"not a rainfall threshold.)")
         else:
             conf = f" ({risk_conf}% confidence)" if risk_conf else ""
             return (f"{p}late planting window in {province} — {risk_label} risk{conf}. "
